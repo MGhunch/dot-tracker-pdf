@@ -266,7 +266,8 @@ def build_project_row(project, truncate=False):
     amount_class = f'amount{ballpark_class}{onus_class}'
     desc_class = ' class="description"' if truncate else ''
     
-    display_amount = '$0' if project['onUs'] else format_currency_full(project['spend'])
+    # Show actual value for all items (including On Us)
+    display_amount = format_currency_full(project['spend'])
     
     return f'''
         <tr>

@@ -219,27 +219,18 @@ def get_tracker_data(client_code, month=None):
 
 
 def aggregate_quarterly_data(tracker_data):
-    """For quarterly view, add month prefix to descriptions but keep individual rows"""
+    """For quarterly view, keep individual rows without modifying descriptions"""
     
     result = []
     for record in tracker_data:
         month = record.get('month', '')
-        month_abbrev = month[:3] if month else ''  # Jan, Feb, etc.
         description = record.get('description', '')
-        
-        # Add month prefix to description
-        if month_abbrev and description:
-            prefixed_description = f"{month_abbrev}: {description}"
-        elif month_abbrev:
-            prefixed_description = month_abbrev
-        else:
-            prefixed_description = description
         
         result.append({
             'jobNumber': record.get('jobNumber', ''),
             'projectName': record.get('projectName', ''),
             'owner': record.get('owner', ''),
-            'description': prefixed_description,
+            'description': description,
             'spend': record.get('spend', 0) or 0,
             'spendType': record.get('spendType', 'Project budget'),
             'ballpark': record.get('ballpark', False),
@@ -583,16 +574,11 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     
     # Quarter total row
     total_spend_rounded = round_to_hundred(total_spend)
-    if total_key_projects == 0:
-        total_worked_on = "Retainer only"
-    else:
-        total_avg = round_to_hundred(total_spend / total_key_projects) if total_key_projects > 0 else 0
-        total_worked_on = f"{total_key_projects} projects (average {format_currency(total_avg)})"
     
     summary_rows += f'''
         <tr class="total-row">
-            <td><strong>{quarter_label} {today.year}</strong></td>
-            <td><strong>{total_worked_on}</strong></td>
+            <td></td>
+            <td></td>
             <td style="text-align: right;"><strong>{format_currency(total_spend_rounded)}</strong></td>
         </tr>'''
     

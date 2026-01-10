@@ -420,8 +420,10 @@ body {
     letter-spacing: 0.5px;
 }
 .footer-date {
-    font-size: 9px;
+    font-size: 11px;
     color: #999;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     display: flex;
     align-items: center;
     gap: 4px;

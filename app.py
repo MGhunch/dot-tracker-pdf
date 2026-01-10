@@ -367,6 +367,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
     # Format dates
     today = datetime.now()
     report_date = today.strftime('%d %b %Y')
+    report_date_short = today.strftime('%d %b').upper()  # "11 JAN" format for footer
     quarter_label = display_quarter_label  # Use the calculated quarter label
     
     # Quarter month range for display (e.g., "OCT-DEC")
@@ -395,7 +396,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
             rollover_box_html, rollover_note_html, grid_columns,
-            quarter_label, quarter_range, report_date, today, display_quarter_label
+            quarter_label, quarter_range, report_date_short, today, display_quarter_label
         )
     else:
         return build_monthly_html(
@@ -403,7 +404,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
             rollover_box_html, rollover_note_html, grid_columns,
-            quarter_label, report_date, today
+            quarter_label, report_date_short, today
         )
 
 
@@ -715,8 +716,16 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="footer-left">
                 <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
             </div>
-            <div class="footer-center">Generated {report_date}</div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
         </footer>
     </div>
     
@@ -741,8 +750,16 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="footer-left">
                 <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
             </div>
-            <div class="footer-center">Generated {report_date}</div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
         </footer>
     </div>
 </body>
@@ -863,14 +880,23 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
             <div class="footer-left">
                 <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
             </div>
-            <div class="footer-center">Generated {report_date}</div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
         </footer>
     </div>
         '''
 
     # Build the head section with CSS (can't use f-string because CSS has curly braces)
     html_head = '''<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -900,15 +926,6 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
             <div class="client-name">{client['name']}</div>
             <div class="report-meta-block">
                 <div class="report-meta">{quarter_label} · {month} {today.year}</div>
-                <div class="report-date">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    {report_date}
-                </div>
             </div>
         </div>
         
@@ -918,9 +935,6 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                     <div class="stat-value grey">{format_currency(committed)}</div>
                     <div class="stat-label">Committed</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value">{format_currency(grand_total)}</div>
-                    <div class="stat-label">To Date</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value {remaining_class}">{format_currency(abs(remaining))}</div>
@@ -1028,6 +1042,15 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                 <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
         </footer>
     </div>
     

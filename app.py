@@ -229,6 +229,59 @@ def build_project_row(project, truncate=False):
     '''
 
 
+def build_monthly_summary(tracker_data, quarter_months):
+    """Build monthly summary table data for quarterly report front page"""
+    summary = {}
+    for m in quarter_months:
+        summary[m] = {'count': 0, 'spend': 0}
+    
+    for record in tracker_data:
+        if record['spendType'] == 'Project budget':
+            m = record.get('month', '')
+            if m in summary:
+                summary[m]['count'] += 1
+                summary[m]['spend'] += record.get('spend', 0) or 0
+    
+    return summary
+
+
+def build_other_stuff_summary(tracker_data):
+    """Build other stuff summary for quarterly report front page"""
+    extra_budget = {'count': 0, 'spend': 0}
+    on_us = {'count': 0, 'spend': 0}
+    
+    for record in tracker_data:
+        spend_type = record.get('spendType', '')
+        spend = record.get('spend', 0) or 0
+        
+        if spend_type == 'Extra budget':
+            extra_budget['count'] += 1
+            extra_budget['spend'] += spend
+        elif spend_type == 'Project on us':
+            on_us['count'] += 1
+            # On us shows $0
+    
+    return {'extra_budget': extra_budget, 'on_us': on_us}
+
+
+def build_monthly_detail_sections(tracker_data, quarter_months):
+    """Build detailed monthly sections for quarterly report back page"""
+    # Group by month
+    by_month = {m: [] for m in quarter_months}
+    
+    for record in tracker_data:
+        if record['spendType'] == 'Project budget':
+            m = record.get('month', '')
+            if m in by_month:
+                by_month[m].append(record)
+    
+    # Sort each month by spend descending
+    for m in by_month:
+        by_month[m].sort(key=lambda x: x.get('spend', 0) or 0, reverse=True)
+    
+    return by_month
+
+
 def build_html(client, tracker_data, month, is_quarter=False):
     """Build the complete HTML document"""
     
@@ -236,7 +289,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
     quarter_months = get_quarter_months(month)
     display_quarter_label = get_quarter_label_for_months(quarter_months, client['yearEnd'])
     
-    # If quarterly view, add month prefix to descriptions
+    # If quarterly view, add month prefix to descriptions (for back page)
     if is_quarter:
         tracker_data = aggregate_quarterly_data(tracker_data)
     
@@ -244,7 +297,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
     projects = [r for r in tracker_data if r['spendType'] == 'Project budget']
     other_stuff = [r for r in tracker_data if r['spendType'] != 'Project budget']
     
-    # Sort by spend (highest first)
+    # Sort by spend (highest first) for monthly view
     projects.sort(key=lambda x: x['spend'] or 0, reverse=True)
     other_stuff.sort(key=lambda x: x['spend'] or 0, reverse=True)
     
@@ -287,23 +340,14 @@ def build_html(client, tracker_data, month, is_quarter=False):
     remaining_class = 'orange' if is_overspent else 'red'
     progress_class = 'over' if is_overspent else ''
     
-    # Pagination rules
-    has_other_stuff = len(other_stuff) > 0
-    max_page1_projects = 4 if has_other_stuff else 7
-    page1_projects = projects[:max_page1_projects]
-    page2_projects = projects[max_page1_projects:]
-    needs_page2 = len(page2_projects) > 0
-    
     # Format dates
     today = datetime.now()
-    report_date = today.strftime('%d %b')
+    report_date = today.strftime('%d %b %Y')
     quarter_label = display_quarter_label  # Use the calculated quarter label
     
-    # Build page 1 project rows
-    page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
-    
-    # Build other stuff rows
-    other_rows = ''.join(build_project_row(p, truncate=True) for p in other_stuff)
+    # Quarter month range for display (e.g., "OCT-DEC")
+    month_abbrevs = [m[:3].upper() for m in quarter_months]
+    quarter_range = f"{month_abbrevs[0]}-{month_abbrevs[2]}"
     
     # Rollover box (only show if there's rollover credit)
     rollover_box_html = ''
@@ -314,10 +358,588 @@ def build_html(client, tracker_data, month, is_quarter=False):
                     <div class="stat-value grey">+{format_currency(rollover)}</div>
                     <div class="stat-label">{rollover_quarter} Rollover</div>
                 </div>'''
-        rollover_note_html = f'<li><strong>Rollover</strong> – Credit from {rollover_quarter} underspend available this month.</li>'
+        rollover_note_html = f'<li><strong>Rollover</strong> – Credit from {rollover_quarter} underspend available this quarter.</li>'
     
     # Grid columns - 3 if no rollover, 4 if rollover
     grid_columns = 'repeat(4, 1fr)' if rollover > 0 else 'repeat(3, 1fr)'
+    
+    # Build quarterly or monthly specific content
+    if is_quarter:
+        return build_quarterly_html(
+            client, tracker_data, projects, other_stuff, quarter_months,
+            committed, grand_total, remaining, rollover, rollover_quarter,
+            spend_percent, is_overspent, remaining_class, progress_class,
+            rollover_box_html, rollover_note_html, grid_columns,
+            quarter_label, quarter_range, report_date, today, display_quarter_label
+        )
+    else:
+        return build_monthly_html(
+            client, tracker_data, projects, other_stuff, month,
+            committed, grand_total, remaining, rollover, rollover_quarter,
+            spend_percent, is_overspent, remaining_class, progress_class,
+            rollover_box_html, rollover_note_html, grid_columns,
+            quarter_label, report_date, today
+        )
+
+
+def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_months,
+                         committed, grand_total, remaining, rollover, rollover_quarter,
+                         spend_percent, is_overspent, remaining_class, progress_class,
+                         rollover_box_html, rollover_note_html, grid_columns,
+                         quarter_label, quarter_range, report_date, today, display_quarter_label):
+    """Build HTML for quarterly report (2 pages: summary + detail)"""
+    
+    # Build monthly summary for front page
+    monthly_summary = build_monthly_summary(tracker_data, quarter_months)
+    
+    # Build other stuff summary
+    other_summary = build_other_stuff_summary(tracker_data)
+    has_other_stuff = other_summary['extra_budget']['count'] > 0 or other_summary['on_us']['count'] > 0
+    
+    # Build summary table rows
+    summary_rows = ''
+    total_projects = 0
+    for m in quarter_months:
+        data = monthly_summary[m]
+        total_projects += data['count']
+        summary_rows += f'''
+            <tr>
+                <td>{m}</td>
+                <td style="text-align: center;">{data['count']}</td>
+                <td style="text-align: right;">{format_currency_full(data['spend'])}</td>
+            </tr>'''
+    
+    # Quarter total row
+    summary_rows += f'''
+        <tr class="total-row">
+            <td><strong>Quarter</strong></td>
+            <td style="text-align: center;"><strong>{total_projects}</strong></td>
+            <td style="text-align: right;"><strong>{format_currency_full(grand_total)}</strong></td>
+        </tr>'''
+    
+    # Build other stuff summary table
+    other_stuff_html = ''
+    if has_other_stuff:
+        other_rows = ''
+        if other_summary['extra_budget']['count'] > 0:
+            other_rows += f'''
+                <tr>
+                    <td>Extra budget</td>
+                    <td style="text-align: center;">{other_summary['extra_budget']['count']}</td>
+                    <td style="text-align: right;">{format_currency_full(other_summary['extra_budget']['spend'])}</td>
+                </tr>'''
+        if other_summary['on_us']['count'] > 0:
+            other_rows += f'''
+                <tr>
+                    <td>On us</td>
+                    <td style="text-align: center;">{other_summary['on_us']['count']}</td>
+                    <td style="text-align: right;">$0</td>
+                </tr>'''
+        
+        other_stuff_html = f'''
+        <div class="projects-section">
+            <div class="section-title">Other Stuff</div>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th style="text-align: center;">Projects</th>
+                        <th style="text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {other_rows}
+                </tbody>
+            </table>
+        </div>'''
+    
+    # Build monthly detail sections for back page
+    monthly_detail = build_monthly_detail_sections(tracker_data, quarter_months)
+    
+    detail_sections = ''
+    for m in quarter_months:
+        month_projects = monthly_detail[m]
+        if not month_projects:
+            continue
+        
+        month_total = sum(p.get('spend', 0) or 0 for p in month_projects)
+        
+        rows = ''
+        for p in month_projects:
+            ballpark_class = ' ballpark' if p.get('ballpark') else ''
+            amount = format_currency_full(p.get('spend', 0))
+            rows += f'''
+                <tr>
+                    <td class="project-name">{p['jobNumber']} · {p['projectName']}</td>
+                    <td>{p.get('owner', '')}</td>
+                    <td class="description">{p.get('description', '')}</td>
+                    <td class="amount{ballpark_class}">{amount}</td>
+                </tr>'''
+        
+        detail_sections += f'''
+        <div class="projects-section">
+            <div class="section-title">{m}</div>
+            <table class="projects-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Project</th>
+                        <th style="width: 18%;">Owner</th>
+                        <th>Description</th>
+                        <th style="width: 70px;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows}
+                    <tr class="subtotal-row">
+                        <td colspan="3"><strong>{m} Total</strong></td>
+                        <td class="amount"><strong>{format_currency_full(month_total)}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>'''
+    
+    # Build other stuff detail for back page
+    other_detail_html = ''
+    if has_other_stuff:
+        other_items = [r for r in tracker_data if r['spendType'] != 'Project budget']
+        if other_items:
+            other_rows = ''
+            for p in other_items:
+                display_amount = '$0' if p.get('onUs') else format_currency_full(p.get('spend', 0))
+                ballpark_class = ' ballpark' if p.get('ballpark') else ''
+                other_rows += f'''
+                    <tr>
+                        <td class="project-name">{p['jobNumber']} · {p['projectName']}</td>
+                        <td>{p.get('owner', '')}</td>
+                        <td class="description">{p.get('description', '')}</td>
+                        <td class="amount{ballpark_class}">{display_amount}</td>
+                    </tr>'''
+            
+            other_detail_html = f'''
+            <div class="projects-section">
+                <div class="section-title">Other Stuff</div>
+                <table class="projects-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Project</th>
+                            <th style="width: 18%;">Owner</th>
+                            <th>Description</th>
+                            <th style="width: 70px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {other_rows}
+                    </tbody>
+                </table>
+            </div>'''
+    
+    # Build the full HTML
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker Report - {client['name']} - {quarter_label}</title>
+    <link rel="icon" href="{IMAGE_BASE}/favicon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        
+        @page {{ size: A4; margin: 0; }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: white;
+            color: #333;
+            line-height: 1.4;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }}
+        
+        .page {{
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm 20mm 15mm 20mm;
+            position: relative;
+            page-break-after: always;
+        }}
+        
+        .page:last-child {{ page-break-after: auto; }}
+        
+        .header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #ED1C24;
+        }}
+        
+        .header-logo {{ height: 36px; width: auto; }}
+        .client-logo {{ height: 40px; width: 40px; border-radius: 50%; object-fit: cover; }}
+        
+        .report-title-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }}
+        
+        .client-name {{
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 36px;
+            color: #333;
+            letter-spacing: 1px;
+        }}
+        
+        .report-meta-block {{ text-align: right; }}
+        
+        .report-meta {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+        }}
+        
+        .section-title {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+            padding: 10px 0;
+            margin-bottom: 8px;
+        }}
+        
+        .numbers-section {{ margin-bottom: 16px; }}
+        
+        .numbers-grid {{
+            display: grid;
+            gap: 12px;
+            margin-bottom: 12px;
+        }}
+        
+        .stat-box {{
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 14px 12px;
+            text-align: center;
+        }}
+        
+        .stat-box.rollover-box {{ background: #fafafa; }}
+        .stat-box.rollover-box .stat-value {{ color: #999; }}
+        
+        .stat-value {{
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            color: #333;
+        }}
+        
+        .stat-value.grey {{ color: #666; }}
+        .stat-value.red {{ color: #ED1C24; }}
+        .stat-value.orange {{ color: #f59e0b; }}
+        
+        .stat-label {{
+            font-size: 9px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }}
+        
+        .progress-bar {{
+            height: 6px;
+            background: #e5e5e5;
+            border-radius: 3px;
+            overflow: hidden;
+        }}
+        
+        .progress-fill {{
+            height: 100%;
+            background: #ED1C24;
+            border-radius: 3px;
+        }}
+        
+        .progress-fill.over {{
+            background: #f59e0b;
+        }}
+        
+        .projects-section {{
+            margin-bottom: 16px;
+        }}
+        
+        .projects-table, .summary-table {{
+            width: 100%;
+            border-collapse: collapse;
+        }}
+        
+        .projects-table th, .summary-table th {{
+            text-align: left;
+            font-size: 9px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 0;
+            border-bottom: 2px solid #f0f0f0;
+        }}
+        
+        .projects-table td, .summary-table td {{
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 12px;
+            color: #666;
+        }}
+        
+        .project-name {{
+            font-weight: 600;
+            color: #333;
+        }}
+        
+        .description {{
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        
+        .amount {{
+            text-align: right;
+            font-weight: 600;
+            color: #333;
+        }}
+        
+        .amount.ballpark {{ color: #ED1C24; }}
+        .amount.onus {{ color: #999; }}
+        
+        .total-row td {{
+            border-top: 2px solid #e5e5e5;
+            border-bottom: none;
+            padding-top: 12px;
+        }}
+        
+        .subtotal-row td {{
+            border-top: 1px solid #e5e5e5;
+            border-bottom: none;
+            background: #fafafa;
+            padding: 8px 0;
+        }}
+        
+        .more-projects {{
+            text-align: right;
+            font-size: 11px;
+            color: #ED1C24;
+            font-weight: 600;
+            margin-top: 8px;
+        }}
+        
+        .bottom-row {{
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 20px;
+            margin-top: auto;
+        }}
+        
+        .chart-section {{
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 16px;
+        }}
+        
+        .notes-section {{
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 16px;
+        }}
+        
+        .notes-list {{
+            list-style: none;
+            font-size: 11px;
+            color: #666;
+        }}
+        
+        .notes-list li {{
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }}
+        
+        .notes-list strong {{
+            color: #333;
+        }}
+        
+        .footer {{
+            position: absolute;
+            bottom: 15mm;
+            left: 20mm;
+            right: 20mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .footer-logo {{ height: 24px; width: auto; }}
+        
+        .footer-center {{
+            font-size: 9px;
+            color: #999;
+        }}
+        
+        .footer-tagline {{
+            font-size: 9px;
+            color: #999;
+            letter-spacing: 0.5px;
+        }}
+        
+        .page-2-header {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+            margin-bottom: 16px;
+        }}
+    </style>
+</head>
+<body>
+    <!-- Page 1: Summary -->
+    <div class="page">
+        <header class="header">
+            <div class="header-left">
+                <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
+            </div>
+            <div class="header-right">
+                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
+            </div>
+        </header>
+        
+        <div class="report-title-row">
+            <div class="client-name">{client['name']}</div>
+            <div class="report-meta-block">
+                <div class="report-meta">{quarter_label} · {quarter_range} {today.year}</div>
+            </div>
+        </div>
+        
+        <div class="numbers-section">
+            <div class="numbers-grid" style="grid-template-columns: {grid_columns};">
+                <div class="stat-box">
+                    <div class="stat-value grey">{format_currency(committed)}</div>
+                    <div class="stat-label">Committed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">{format_currency(grand_total)}</div>
+                    <div class="stat-label">To Date</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value {remaining_class}">{"+" if remaining < 0 else ""}{format_currency(abs(remaining))}</div>
+                    <div class="stat-label">{'Over' if remaining < 0 else 'To Spend'}</div>
+                </div>{rollover_box_html}
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>
+            </div>
+        </div>
+        
+        <div class="projects-section">
+            <div class="section-title">Summary</div>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th style="text-align: center;">Projects</th>
+                        <th style="text-align: right;">Spend</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {summary_rows}
+                </tbody>
+            </table>
+        </div>
+        
+        {other_stuff_html}
+        
+        <div class="more-projects">Full list over the page →</div>
+        
+        <div class="bottom-row">
+            <div class="chart-section">
+                <div class="section-title">Tracker</div>
+                <!-- Chart placeholder -->
+                <div style="height: 120px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 11px;">
+                    Chart coming soon
+                </div>
+            </div>
+            
+            <div class="notes-section">
+                <div class="section-title">Notes</div>
+                <ul class="notes-list">
+                    <li><strong>Ballparks</strong> – Red amounts are estimates, not locked in yet.</li>
+                    {rollover_note_html}
+                    <li><strong>Always on</strong> – Includes 10% for meetings and ad-hoc consults.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <div class="footer-left">
+                <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
+            </div>
+            <div class="footer-center">Generated {report_date}</div>
+            <div class="footer-tagline">agency intuition × artificial intelligence</div>
+        </footer>
+    </div>
+    
+    <!-- Page 2: Detail -->
+    <div class="page">
+        <header class="header">
+            <div class="header-left">
+                <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
+            </div>
+            <div class="header-right">
+                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
+            </div>
+        </header>
+        
+        <div class="page-2-header">{client['name']} · {quarter_label} Detail</div>
+        
+        {detail_sections}
+        
+        {other_detail_html}
+        
+        <footer class="footer">
+            <div class="footer-left">
+                <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
+            </div>
+            <div class="footer-center">Generated {report_date}</div>
+            <div class="footer-tagline">agency intuition × artificial intelligence</div>
+        </footer>
+    </div>
+</body>
+</html>'''
+    
+    return html
+
+
+def build_monthly_html(client, tracker_data, projects, other_stuff, month,
+                       committed, grand_total, remaining, rollover, rollover_quarter,
+                       spend_percent, is_overspent, remaining_class, progress_class,
+                       rollover_box_html, rollover_note_html, grid_columns,
+                       quarter_label, report_date, today):
+    """Build HTML for monthly report (original single-page layout)"""
+    
+    has_other_stuff = len(other_stuff) > 0
+    max_page1_projects = 4 if has_other_stuff else 7
+    page1_projects = projects[:max_page1_projects]
+    page2_projects = projects[max_page1_projects:]
+    needs_page2 = len(page2_projects) > 0
+    
+    # Build page 1 project rows
+    page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
+    
+    # Build other stuff rows
+    other_rows = ''.join(build_project_row(p, truncate=True) for p in other_stuff)
     
     # Other stuff section HTML
     other_stuff_html = ''
@@ -386,15 +1008,6 @@ def build_html(client, tracker_data, month, is_quarter=False):
             <div class="client-name">{client['name']}</div>
             <div class="report-meta-block">
                 <div class="report-meta">{quarter_label} · {month} {today.year}</div>
-                <div class="report-date">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    {report_date}
-                </div>
             </div>
         </div>
         
@@ -421,14 +1034,13 @@ def build_html(client, tracker_data, month, is_quarter=False):
             <div class="footer-left">
                 <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
             </div>
+            <div class="footer-center">Generated {report_date}</div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
         </footer>
     </div>
         '''
-    
-    # Full HTML
+
     html = f'''<!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

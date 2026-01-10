@@ -396,8 +396,8 @@ body {
 .footer {
     position: absolute;
     bottom: 15mm;
-    left: 0;
-    right: 0;
+    left: 20mm;
+    right: 20mm;
     display: flex;
     justify-content: space-between;
     align-items: center;

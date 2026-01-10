@@ -254,6 +254,20 @@ def build_html(client, tracker_data, month, is_quarter=False):
     # Build other stuff rows
     other_rows = ''.join(build_project_row(p, truncate=True) for p in other_stuff)
     
+    # Rollover box (only show if there's rollover credit)
+    rollover_box_html = ''
+    rollover_note_html = ''
+    if rollover > 0:
+        rollover_box_html = f'''
+                <div class="stat-box rollover-box">
+                    <div class="stat-value grey">+{format_currency(rollover)}</div>
+                    <div class="stat-label">{rollover_quarter} Rollover</div>
+                </div>'''
+        rollover_note_html = f'<li><strong>Rollover</strong> – Credit from {rollover_quarter} underspend available this month.</li>'
+    
+    # Grid columns - 3 if no rollover, 4 if rollover
+    grid_columns = 'repeat(4, 1fr)' if rollover > 0 else 'repeat(3, 1fr)'
+    
     # Other stuff section HTML
     other_stuff_html = ''
     if has_other_stuff:
@@ -752,7 +766,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
         </div>
         
         <div class="numbers-section">
-            <div class="numbers-grid">
+            <div class="numbers-grid" style="grid-template-columns: {grid_columns};">
                 <div class="stat-box">
                     <div class="stat-value grey">{format_currency(committed)}</div>
                     <div class="stat-label">Committed</div>
@@ -764,11 +778,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
                 <div class="stat-box">
                     <div class="stat-value {remaining_class}">{format_currency(abs(remaining))}</div>
                     <div class="stat-label">{'Over' if remaining < 0 else 'To Spend'}</div>
-                </div>
-                <div class="stat-box rollover-box">
-                    <div class="stat-value grey">+{format_currency(rollover)}</div>
-                    <div class="stat-label">{rollover_quarter} Rollover</div>
-                </div>
+                </div>{rollover_box_html}
             </div>
             <div class="progress-bar">
                 <div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>
@@ -860,7 +870,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
                 <div class="section-title">Notes</div>
                 <ul class="notes-list">
                     <li><strong>Ballparks</strong> – Red amounts are estimates, not locked in yet.</li>
-                    <li><strong>Rollover</strong> – Credit from {rollover_quarter} underspend available this month.</li>
+                    {rollover_note_html}
                     <li><strong>Always on</strong> – Includes 10% for meetings and ad-hoc consults.</li>
                 </ul>
             </div>

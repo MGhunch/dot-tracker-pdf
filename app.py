@@ -445,8 +445,10 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     
     # Build chart data - spend per month (monthly committed, not quarterly)
     monthly_committed = committed // 3  # Monthly budget
-    chart_max = monthly_committed + 5000  # Y-axis max
-    committed_height = (monthly_committed / chart_max) * 100
+    chart_max = monthly_committed + 10000  # Y-axis max (committed + headroom for overspend)
+    
+    # Grey bar height - committed level as % of chart max
+    committed_pct = (monthly_committed / chart_max) * 100
     
     # Get previous quarter months and their spend
     prev_quarter_months = get_previous_quarter_months(quarter_months)
@@ -463,13 +465,14 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     for m in prev_quarter_months:
         month_spend = get_month_spend(m)
         month_abbrev = m[:3]
-        spend_height = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        # Spend as % of chart max (so it scales correctly against grey bar)
+        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
         chart_bars_html += f'''
             <div class="bar-group">
                 <div class="bar-stack" style="height: 100px;">
-                    <div class="bar-committed" style="height: {committed_height}%;"></div>
-                    <div class="bar-spend" style="height: {spend_height}%;"></div>
+                    <div class="bar-committed" style="height: {committed_pct}%;"></div>
+                    <div class="bar-spend" style="height: {spend_pct}%;"></div>
                 </div>
                 <span class="bar-label">{month_abbrev}</span>
             </div>'''
@@ -479,7 +482,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     for m in quarter_months:
         month_spend = monthly_summary[m]['total_spend']
         month_abbrev = m[:3]
-        spend_height = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
         # Check if this month is in the future
         month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
@@ -490,11 +493,14 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         chart_bars_html += f'''
             <div class="bar-group">
                 <div class="bar-stack" style="height: 100px;">
-                    <div class="bar-committed{future_class}" style="height: {committed_height}%;"></div>
-                    <div class="bar-spend" style="height: {spend_height}%;"></div>
+                    <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
+                    <div class="bar-spend" style="height: {spend_pct}%;"></div>
                 </div>
                 <span class="bar-label">{month_abbrev}</span>
             </div>'''
+    
+    # Calculate committed line position (as % from bottom)
+    committed_line_bottom = committed_pct
     
     # Build summary table rows
     summary_rows = ''
@@ -743,7 +749,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="chart-section">
                 <div class="section-title">Tracker</div>
                 <div class="chart-wrapper">
-                    <div class="committed-line"></div>
+                    <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                     <div class="chart-container">
                         {chart_bars_html}
                     </div>
@@ -836,8 +842,10 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     # Build chart data - same as quarterly (prev quarter + current quarter)
     quarter_months = get_quarter_months(month)
     monthly_committed = committed  # Already monthly for monthly report
-    chart_max = monthly_committed + 5000
-    committed_height = (monthly_committed / chart_max) * 100
+    chart_max = monthly_committed + 10000  # Y-axis max (committed + headroom)
+    
+    # Grey bar height - committed level as % of chart max
+    committed_pct = (monthly_committed / chart_max) * 100
     
     # Get previous quarter months
     prev_quarter_months = get_previous_quarter_months(quarter_months)
@@ -854,13 +862,13 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     for m in prev_quarter_months:
         month_spend = get_month_spend(m)
         month_abbrev = m[:3]
-        spend_height = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
         chart_bars_html += f'''
                         <div class="bar-group">
                             <div class="bar-stack" style="height: 80px;">
-                                <div class="bar-committed" style="height: {committed_height}%;"></div>
-                                <div class="bar-spend" style="height: {spend_height}%;"></div>
+                                <div class="bar-committed" style="height: {committed_pct}%;"></div>
+                                <div class="bar-spend" style="height: {spend_pct}%;"></div>
                             </div>
                             <span class="bar-label">{month_abbrev}</span>
                         </div>'''
@@ -873,7 +881,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     for m in quarter_months:
         month_spend = get_month_spend(m)
         month_abbrev = m[:3]
-        spend_height = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
         # Check if this month is in the future
         is_future = month_order.index(m) > month_order.index(current_month)
@@ -882,11 +890,14 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         chart_bars_html += f'''
                         <div class="bar-group">
                             <div class="bar-stack" style="height: 80px;">
-                                <div class="bar-committed{future_class}" style="height: {committed_height}%;"></div>
-                                <div class="bar-spend" style="height: {spend_height}%;"></div>
+                                <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
+                                <div class="bar-spend" style="height: {spend_pct}%;"></div>
                             </div>
                             <span class="bar-label">{month_abbrev}</span>
                         </div>'''
+    
+    # Committed line position
+    committed_line_bottom = committed_pct
     
     # Build page 1 project rows
     page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
@@ -1087,7 +1098,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                         <span class="y-label">$5k</span>
                         <span class="y-label">$0</span>
                     </div>
-                    <div class="committed-line" style="bottom: 50%;"></div>
+                    <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                     <div class="chart-container">
                         {chart_bars_html}
                     </div>

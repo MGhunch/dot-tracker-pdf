@@ -299,7 +299,7 @@ body {
 
 .committed-line {
     position: absolute;
-    left: 32px;
+    left: 0;
     right: 0;
     border-top: 1.5px dashed #c0c0c0;
     z-index: 5;

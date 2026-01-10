@@ -83,6 +83,88 @@ def get_tracker_data(client_code, month=None):
     return []
 
 
+def aggregate_quarterly_data(tracker_data):
+    """Aggregate tracker data by job number for quarterly view"""
+    # Month order for sorting
+    month_order = {
+        'January': 1, 'February': 2, 'March': 3, 'April': 4,
+        'May': 5, 'June': 6, 'July': 7, 'August': 8,
+        'September': 9, 'October': 10, 'November': 11, 'December': 12
+    }
+    
+    # Group by job number
+    jobs = {}
+    for record in tracker_data:
+        job_num = record['jobNumber']
+        if job_num not in jobs:
+            jobs[job_num] = {
+                'jobNumber': job_num,
+                'projectName': record['projectName'],
+                'owner': record['owner'],
+                'spendType': record['spendType'],
+                'ballpark': record['ballpark'],
+                'onUs': record['onUs'],
+                'spend': 0,
+                'entries': []  # Track month + description pairs
+            }
+        
+        jobs[job_num]['spend'] += record['spend'] or 0
+        jobs[job_num]['entries'].append({
+            'month': record['month'],
+            'description': record['description'],
+            'month_num': month_order.get(record['month'], 0)
+        })
+        
+        # If any entry is ballpark, mark the whole job as ballpark
+        if record['ballpark']:
+            jobs[job_num]['ballpark'] = True
+    
+    # Build aggregated descriptions
+    result = []
+    for job_num, job in jobs.items():
+        # Sort entries by month
+        job['entries'].sort(key=lambda x: x['month_num'])
+        
+        # Get unique descriptions in month order
+        seen_descriptions = set()
+        unique_entries = []
+        for entry in job['entries']:
+            desc = entry['description']
+            if desc and desc not in seen_descriptions:
+                seen_descriptions.add(desc)
+                unique_entries.append(entry)
+        
+        # Build description string
+        if len(unique_entries) == 0:
+            description = ''
+        elif len(unique_entries) == 1:
+            # Single description - no month prefix needed
+            description = unique_entries[0]['description']
+        else:
+            # Multiple descriptions - show month: description → month: description
+            parts = []
+            for entry in unique_entries:
+                month_abbrev = entry['month'][:3]  # Jan, Feb, etc.
+                parts.append(f"{month_abbrev}: {entry['description']}")
+            description = ' → '.join(parts)
+        
+        result.append({
+            'jobNumber': job['jobNumber'],
+            'projectName': job['projectName'],
+            'owner': job['owner'],
+            'description': description,
+            'spend': job['spend'],
+            'spendType': job['spendType'],
+            'ballpark': job['ballpark'],
+            'onUs': job['onUs'],
+            'month': ''  # Not applicable for quarterly
+        })
+    
+    # Sort by spend descending
+    result.sort(key=lambda x: x['spend'], reverse=True)
+    return result
+
+
 def format_currency(amount):
     """Format number as currency"""
     if amount == 0:
@@ -120,6 +202,10 @@ def build_project_row(project, truncate=False):
 
 def build_html(client, tracker_data, month, is_quarter=False):
     """Build the complete HTML document"""
+    
+    # If quarterly view, aggregate the data
+    if is_quarter:
+        tracker_data = aggregate_quarterly_data(tracker_data)
     
     # Separate projects from other stuff
     projects = [r for r in tracker_data if r['spendType'] == 'Project budget']
@@ -841,7 +927,11 @@ def generate_pdf():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    tracker_data = get_tracker_data(client_code, month)
+    # For quarterly view, get all data (don't filter by month)
+    if is_quarter:
+        tracker_data = get_tracker_data(client_code, None)
+    else:
+        tracker_data = get_tracker_data(client_code, month)
     
     # Build HTML
     html = build_html(client, tracker_data, month, is_quarter)
@@ -875,7 +965,12 @@ def generate_html():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    tracker_data = get_tracker_data(client_code, month)
+    # For quarterly view, get all data (don't filter by month)
+    if is_quarter:
+        tracker_data = get_tracker_data(client_code, None)
+    else:
+        tracker_data = get_tracker_data(client_code, month)
+    
     html = build_html(client, tracker_data, month, is_quarter)
     
     return Response(html, mimetype='text/html')

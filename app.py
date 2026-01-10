@@ -477,7 +477,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         chart_bars_html += f'''
             <div class="bar-group">
-                <div class="bar-stack" style="height: 100px;">
+                <div class="bar-stack" >
                     <div class="bar-committed" style="height: {committed_pct}%;"></div>
                     <div class="bar-spend" style="height: {spend_pct}%;"></div>
                 </div>
@@ -499,7 +499,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         chart_bars_html += f'''
             <div class="bar-group">
-                <div class="bar-stack" style="height: 100px;">
+                <div class="bar-stack" >
                     <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
                     <div class="bar-spend" style="height: {spend_pct}%;"></div>
                 </div>
@@ -884,7 +884,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         
         chart_bars_html += f'''
                         <div class="bar-group">
-                            <div class="bar-stack" style="height: 80px;">
+                            <div class="bar-stack" >
                                 <div class="bar-committed" style="height: {committed_pct}%;"></div>
                                 <div class="bar-spend" style="height: {spend_pct}%;"></div>
                             </div>
@@ -907,7 +907,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         
         chart_bars_html += f'''
                         <div class="bar-group">
-                            <div class="bar-stack" style="height: 80px;">
+                            <div class="bar-stack" >
                                 <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
                                 <div class="bar-spend" style="height: {spend_pct}%;"></div>
                             </div>

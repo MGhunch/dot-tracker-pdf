@@ -16,6 +16,16 @@ API_BASE = 'https://dot-remote-api.up.railway.app'
 SERVICE_URL = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'dot-tracker-pdf.up.railway.app')
 IMAGE_BASE = f'https://{SERVICE_URL}/static/images'
 
+# Historical spend data for Jul-Sep (system only has data from Oct onwards)
+HISTORICAL_SPEND = {
+    'ONE': {'July': 13750, 'August': 3750, 'September': 19500},
+    'ONB': {'July': 11750, 'August': 26750, 'September': 13500},
+    'ONS': {'July': 31500, 'August': 28500, 'September': 25500},
+    'SKY': {'July': 14500, 'August': 17500, 'September': 18000},
+    'FIS': {'July': 4500, 'August': 5000, 'September': 3500},
+    'TOW': {'July': 12000, 'August': 12000, 'September': 6000},
+}
+
 # Load shared CSS once at startup
 CSS_PATH = os.path.join(os.path.dirname(__file__), 'static', 'css', 'report.css')
 try:
@@ -23,6 +33,25 @@ try:
         SHARED_CSS = f.read()
 except FileNotFoundError:
     SHARED_CSS = '/* CSS file not found */'
+
+
+def sort_projects(projects):
+    """Sort projects by job number, with 000 and 001 jobs at the bottom"""
+    def sort_key(p):
+        job_number = p.get('jobNumber', '')
+        # Extract the numeric part (e.g., "SKY 012" -> "012")
+        parts = job_number.split(' ')
+        num_part = parts[1] if len(parts) > 1 else '999'
+        
+        # 000 goes last, 001 second to last
+        if num_part == '000':
+            return (2, num_part)  # Last
+        elif num_part == '001':
+            return (1, num_part)  # Second to last
+        else:
+            return (0, num_part)  # Normal sort by number
+    
+    return sorted(projects, key=sort_key)
 
 
 def get_previous_quarter(current_quarter):
@@ -342,8 +371,8 @@ def build_html(client, tracker_data, month, is_quarter=False):
     projects = [r for r in tracker_data if r['spendType'] == 'Project budget']
     other_stuff = [r for r in tracker_data if r['spendType'] != 'Project budget']
     
-    # Sort by spend (highest first) for monthly view
-    projects.sort(key=lambda x: x['spend'] or 0, reverse=True)
+    # Sort projects by job number, with 000/001 at bottom
+    projects = sort_projects(projects)
     other_stuff.sort(key=lambda x: x['spend'] or 0, reverse=True)
     
     # Calculate totals - ONLY Project budget counts toward committed
@@ -395,8 +424,9 @@ def build_html(client, tracker_data, month, is_quarter=False):
     month_abbrevs = [m[:3].upper() for m in quarter_months]
     quarter_range = f"{month_abbrevs[0]}-{month_abbrevs[2]}"
     
-    # Rollover box and note
+    # Rollover box and note - only show if rollover > 0
     rollover_box_html = ''
+    rollover_note_html = ''
     if rollover > 0:
         rollover_box_html = f'''
                 <div class="stat-box rollover-box">
@@ -404,8 +434,6 @@ def build_html(client, tracker_data, month, is_quarter=False):
                     <div class="stat-label">{rollover_quarter} Rollover</div>
                 </div>'''
         rollover_note_html = '<li><strong>Rollover</strong> – You can use your rollover credit any time during the quarter. It\'s extra on top of committed spend.</li>'
-    else:
-        rollover_note_html = '<li><strong>Rollover</strong> – Remember, if you don\'t use all your committed spend, it will roll over for the team to use next quarter.</li>'
     
     # Grid columns - 3 if no rollover, 4 if rollover
     grid_columns = 'repeat(4, 1fr)' if rollover > 0 else 'repeat(3, 1fr)'
@@ -460,17 +488,19 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     # Get previous quarter months and their spend
     prev_quarter_months = get_previous_quarter_months(quarter_months)
     
-    # Calculate spend for previous quarter months from tracker_data
-    def get_month_spend(month):
+    # Calculate spend for previous quarter months - use historical data if needed
+    def get_month_spend(month, use_historical=False):
+        if use_historical and client['code'] in HISTORICAL_SPEND:
+            return HISTORICAL_SPEND[client['code']].get(month, 0)
         return sum(d.get('spend', 0) for d in tracker_data 
                    if d.get('month') == month and d.get('spendType') == 'Project budget')
     
     # Build chart bars - previous quarter first, then current quarter
     chart_bars_html = ''
     
-    # Previous quarter bars
+    # Previous quarter bars (use historical data)
     for m in prev_quarter_months:
-        month_spend = get_month_spend(m)
+        month_spend = get_month_spend(m, use_historical=True)
         month_abbrev = m[:3]
         # Spend as % of chart max (so it scales correctly against grey bar)
         spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
@@ -774,9 +804,9 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="notes-section">
                 <div class="section-title">Notes</div>
                 <ul class="notes-list">
-                    <li><strong>Ballparks</strong> – Red amounts are estimates, not locked in yet.</li>
+                    <li><strong>Always on</strong> – This covers ongoing support, consults, and reporting outside specific jobs.</li>
+                    <li><strong>Ballparks</strong> – Red numbers are ballparks. Most jobs start as a $5K ballpark before we lock in scope.</li>
                     {rollover_note_html}
-                    <li><strong>Always on</strong> – Includes 10% for meetings and ad-hoc consults.</li>
                 </ul>
             </div>
         </div>
@@ -868,17 +898,19 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     # Get previous quarter months
     prev_quarter_months = get_previous_quarter_months(quarter_months)
     
-    # Calculate spend for a month from tracker_data
-    def get_month_spend(m):
+    # Calculate spend for a month - use historical data for previous quarter
+    def get_month_spend(m, use_historical=False):
+        if use_historical and client['code'] in HISTORICAL_SPEND:
+            return HISTORICAL_SPEND[client['code']].get(m, 0)
         return sum(d.get('spend', 0) for d in tracker_data 
                    if d.get('month') == m and d.get('spendType') == 'Project budget')
     
     # Build chart bars - previous quarter first, then current quarter
     chart_bars_html = ''
     
-    # Previous quarter bars
+    # Previous quarter bars (use historical data)
     for m in prev_quarter_months:
-        month_spend = get_month_spend(m)
+        month_spend = get_month_spend(m, use_historical=True)
         month_abbrev = m[:3]
         spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
@@ -1127,9 +1159,9 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
             <div class="notes-section">
                 <div class="section-title">Notes</div>
                 <ul class="notes-list">
-                    <li><strong>Ballparks</strong> – Red amounts are estimates, not locked in yet.</li>
+                    <li><strong>Always on</strong> – This covers ongoing support, consults, and reporting outside specific jobs.</li>
+                    <li><strong>Ballparks</strong> – Red numbers are ballparks. Most jobs start as a $5K ballpark before we lock in scope.</li>
                     {rollover_note_html}
-                    <li><strong>Always on</strong> – Includes 10% for meetings and ad-hoc consults.</li>
                 </ul>
             </div>
         </div>

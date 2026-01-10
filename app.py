@@ -759,8 +759,8 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                     <div class="y-axis">
                         {y_axis_html}
                     </div>
-                    <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                     <div class="chart-container">
+                        <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                         {chart_bars_html}
                     </div>
                 </div>
@@ -1112,8 +1112,8 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                     <div class="y-axis">
                         {y_axis_html}
                     </div>
-                    <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                     <div class="chart-container">
+                        <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                         {chart_bars_html}
                     </div>
                 </div>

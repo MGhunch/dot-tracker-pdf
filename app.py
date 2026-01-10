@@ -356,8 +356,11 @@ def build_monthly_detail_sections(tracker_data, quarter_months):
     return by_month
 
 
-def build_html(client, tracker_data, month, is_quarter=False):
+def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=None):
     """Build the complete HTML document"""
+    
+    # For chart, use all_quarter_data if provided, otherwise use tracker_data
+    chart_data = all_quarter_data if all_quarter_data else tracker_data
     
     # Determine quarter info
     quarter_months = get_quarter_months(month)
@@ -449,7 +452,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
         )
     else:
         return build_monthly_html(
-            client, tracker_data, projects, other_stuff, month,
+            client, chart_data, projects, other_stuff, month,
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
             rollover_box_html, rollover_note_html, grid_columns,
@@ -555,18 +558,21 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         total_spend += data['total_spend']
         total_key_spend += key_spend
         
-        # Build "We worked on" description
+        # Build "Projects" description - average is total spend / project count
         if key_count == 0:
             if month_spend > 0:
                 worked_on = "Retainer only"
             else:
                 worked_on = "Nothing from you this month"
         elif key_count == 1:
-            avg = round_to_hundred(key_spend)
-            worked_on = f"1 key project ({format_currency(avg)})"
+            avg = round_to_hundred(month_spend)  # Total spend for one project
+            worked_on = f"One project ({format_currency(avg)})"
         else:
-            avg = round_to_hundred(key_spend / key_count) if key_count > 0 else 0
-            worked_on = f"{key_count} key projects (avg {format_currency(avg)})"
+            avg = round_to_hundred(month_spend / key_count) if key_count > 0 else 0
+            # Use words for 1-9
+            num_words = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
+            count_str = num_words[key_count] if key_count < 10 else str(key_count)
+            worked_on = f"{count_str} projects (average {format_currency(avg)})"
         
         summary_rows += f'''
             <tr>
@@ -580,8 +586,8 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     if total_key_projects == 0:
         total_worked_on = "Retainer only"
     else:
-        total_avg = round_to_hundred(total_key_spend / total_key_projects) if total_key_projects > 0 else 0
-        total_worked_on = f"{total_key_projects} projects (avg {format_currency(total_avg)})"
+        total_avg = round_to_hundred(total_spend / total_key_projects) if total_key_projects > 0 else 0
+        total_worked_on = f"{total_key_projects} projects (average {format_currency(total_avg)})"
     
     summary_rows += f'''
         <tr class="total-row">
@@ -1247,16 +1253,19 @@ def generate_pdf():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    # For quarterly view, get all data then filter by quarter months
-    if is_quarter:
-        tracker_data = get_tracker_data(client_code, None)
-        quarter_months = get_quarter_months(month)
-        tracker_data = [r for r in tracker_data if r.get('month') in quarter_months]
-    else:
-        tracker_data = get_tracker_data(client_code, month)
+    # Always get all quarter data (needed for chart)
+    all_quarter_data = get_tracker_data(client_code, None)
+    quarter_months = get_quarter_months(month)
+    all_quarter_data = [r for r in all_quarter_data if r.get('month') in quarter_months]
     
-    # Build HTML
-    html = build_html(client, tracker_data, month, is_quarter)
+    # For monthly view, also filter to just the selected month for tables
+    if is_quarter:
+        tracker_data = all_quarter_data
+    else:
+        tracker_data = [r for r in all_quarter_data if r.get('month') == month]
+    
+    # Build HTML (pass all_quarter_data for chart)
+    html = build_html(client, tracker_data, month, is_quarter, all_quarter_data)
     
     # Convert to PDF
     try:
@@ -1287,15 +1296,18 @@ def generate_html():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    # For quarterly view, get all data then filter by quarter months
-    if is_quarter:
-        tracker_data = get_tracker_data(client_code, None)
-        quarter_months = get_quarter_months(month)
-        tracker_data = [r for r in tracker_data if r.get('month') in quarter_months]
-    else:
-        tracker_data = get_tracker_data(client_code, month)
+    # Always get all quarter data (needed for chart)
+    all_quarter_data = get_tracker_data(client_code, None)
+    quarter_months = get_quarter_months(month)
+    all_quarter_data = [r for r in all_quarter_data if r.get('month') in quarter_months]
     
-    html = build_html(client, tracker_data, month, is_quarter)
+    # For monthly view, also filter to just the selected month for tables
+    if is_quarter:
+        tracker_data = all_quarter_data
+    else:
+        tracker_data = [r for r in all_quarter_data if r.get('month') == month]
+    
+    html = build_html(client, tracker_data, month, is_quarter, all_quarter_data)
     
     return Response(html, mimetype='text/html')
 

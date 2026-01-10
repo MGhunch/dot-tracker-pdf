@@ -229,18 +229,34 @@ def build_project_row(project, truncate=False):
     '''
 
 
+def round_to_hundred(amount):
+    """Round amount to nearest $100"""
+    return round(amount / 100) * 100
+
+
 def build_monthly_summary(tracker_data, quarter_months):
     """Build monthly summary table data for quarterly report front page"""
     summary = {}
     for m in quarter_months:
-        summary[m] = {'count': 0, 'spend': 0}
+        summary[m] = {
+            'key_project_count': 0,  # Excludes 000 jobs
+            'key_project_spend': 0,  # Spend from non-000 jobs only (for average)
+            'total_spend': 0,  # All spend including 000
+        }
     
     for record in tracker_data:
         if record['spendType'] == 'Project budget':
             m = record.get('month', '')
             if m in summary:
-                summary[m]['count'] += 1
-                summary[m]['spend'] += record.get('spend', 0) or 0
+                spend = record.get('spend', 0) or 0
+                job_number = record.get('jobNumber', '')
+                
+                summary[m]['total_spend'] += spend
+                
+                # Check if it's a 000 job (retainer)
+                if ' 000' not in job_number:
+                    summary[m]['key_project_count'] += 1
+                    summary[m]['key_project_spend'] += spend
     
     return summary
 
@@ -398,23 +414,53 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     
     # Build summary table rows
     summary_rows = ''
-    total_projects = 0
+    total_key_projects = 0
+    total_spend = 0
+    total_key_spend = 0
+    
     for m in quarter_months:
         data = monthly_summary[m]
-        total_projects += data['count']
+        key_count = data['key_project_count']
+        key_spend = data['key_project_spend']
+        month_spend = round_to_hundred(data['total_spend'])
+        
+        total_key_projects += key_count
+        total_spend += data['total_spend']
+        total_key_spend += key_spend
+        
+        # Build "We worked on" description
+        if key_count == 0:
+            if month_spend > 0:
+                worked_on = "Retainer only"
+            else:
+                worked_on = "Nothing from you this month"
+        elif key_count == 1:
+            avg = round_to_hundred(key_spend)
+            worked_on = f"1 key project ({format_currency(avg)})"
+        else:
+            avg = round_to_hundred(key_spend / key_count) if key_count > 0 else 0
+            worked_on = f"{key_count} key projects (avg {format_currency(avg)})"
+        
         summary_rows += f'''
             <tr>
                 <td>{m}</td>
-                <td style="text-align: center;">{data['count']}</td>
-                <td style="text-align: right;">{format_currency_full(data['spend'])}</td>
+                <td>{worked_on}</td>
+                <td style="text-align: right;">{format_currency(month_spend)}</td>
             </tr>'''
     
     # Quarter total row
+    total_spend_rounded = round_to_hundred(total_spend)
+    if total_key_projects == 0:
+        total_worked_on = "Retainer only"
+    else:
+        total_avg = round_to_hundred(total_key_spend / total_key_projects) if total_key_projects > 0 else 0
+        total_worked_on = f"{total_key_projects} projects (avg {format_currency(total_avg)})"
+    
     summary_rows += f'''
         <tr class="total-row">
-            <td><strong>Quarter</strong></td>
-            <td style="text-align: center;"><strong>{total_projects}</strong></td>
-            <td style="text-align: right;"><strong>{format_currency_full(grand_total)}</strong></td>
+            <td><strong>{quarter_label} {today.year}</strong></td>
+            <td><strong>{total_worked_on}</strong></td>
+            <td style="text-align: right;"><strong>{format_currency(total_spend_rounded)}</strong></td>
         </tr>'''
     
     # Build other stuff summary table
@@ -849,7 +895,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                 <thead>
                     <tr>
                         <th>Month</th>
-                        <th style="text-align: center;">Projects</th>
+                        <th>We Worked On</th>
                         <th style="text-align: right;">Spend</th>
                     </tr>
                 </thead>
@@ -861,7 +907,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         {other_stuff_html}
         
-        <div class="more-projects">Full list over the page →</div>
+        <div class="section-title" style="text-align: right; margin-top: 12px;">See projects over the page →</div>
         
         <div class="bottom-row">
             <div class="chart-section">

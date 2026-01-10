@@ -294,6 +294,8 @@ body {
     align-items: flex-end;
     gap: 8px;
     height: 100px;
+    min-height: 100px;
+    max-height: 100px;
     position: relative;
 }
 
@@ -311,11 +313,13 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
+    height: 100px;
 }
 
 .bar-stack {
     position: relative;
     width: 24px;
+    height: 100px;
 }
 
 .bar-committed {

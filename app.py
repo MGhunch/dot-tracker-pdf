@@ -13,7 +13,18 @@ CORS(app)
 API_BASE = 'https://dot-remote-api.up.railway.app'
 
 # Image base URL (GitHub Pages - dot-remote)
-IMAGE_BASE = 'https://hunchee.github.io/dot-remote/images'
+IMAGE_BASE = 'https://mghunch.github.io/dot-remote/images'
+
+
+def get_previous_quarter(current_quarter):
+    """Get the previous quarter label"""
+    quarter_map = {
+        'Q1': 'Q4',
+        'Q2': 'Q1', 
+        'Q3': 'Q2',
+        'Q4': 'Q3'
+    }
+    return quarter_map.get(current_quarter, 'Q1')
 
 
 def get_client_data(client_code):
@@ -24,13 +35,14 @@ def get_client_data(client_code):
             clients = response.json()
             for c in clients:
                 if c.get('code') == client_code:
+                    current_q = c.get('currentQuarter', 'Q1')
                     return {
                         'name': c.get('name', client_code),
                         'code': client_code,
                         'monthlyCommitted': c.get('committed', 10000),
                         'rolloverCredit': c.get('rollover', 0) or 0,
-                        'rolloverQuarter': c.get('rolloverUseIn', 'Q1') or 'Q1',
-                        'currentQuarter': c.get('currentQuarter', 'Q1'),
+                        'rolloverQuarter': get_previous_quarter(current_q),  # Previous quarter
+                        'currentQuarter': current_q,
                         'yearEnd': c.get('yearEnd', 'March')
                     }
     except Exception as e:

@@ -935,6 +935,9 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                     <div class="stat-value grey">{format_currency(committed)}</div>
                     <div class="stat-label">Committed</div>
                 </div>
+                <div class="stat-box">
+                    <div class="stat-value">{format_currency(grand_total)}</div>
+                    <div class="stat-label">To Date</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value {remaining_class}">{format_currency(abs(remaining))}</div>

@@ -299,7 +299,7 @@ body {
 
 .committed-line {
     position: absolute;
-    left: 0;
+    left: 32px;
     right: 0;
     border-top: 1.5px dashed #c0c0c0;
     z-index: 5;
@@ -374,6 +374,7 @@ body {
 .legend-swatch.spend { background: #ED1C24; }
 .legend-swatch.committed { background: #e0e0e0; }
 .legend-swatch.committed-swatch { background: #e0e0e0; }
+.legend-swatch.ballpark { background: #ED1C24; opacity: 0.4; }
 
 /* Notes Section */
 .notes-section {

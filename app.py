@@ -610,22 +610,24 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                 </table>
             </div>'''
     
-    # Build the full HTML
-    html = f'''<!DOCTYPE html>
+    # Build the head section with CSS (can't use f-string because CSS has curly braces)
+    html_head = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker Report - {client['name']} - {quarter_label}</title>
-    <link rel="icon" href="{IMAGE_BASE}/favicon.png" type="image/png">
+    <title>Tracker Report</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-{SHARED_CSS}
+''' + SHARED_CSS + '''
     </style>
 </head>
-<body>
+'''
+    
+    # Build the body with f-string (no CSS curly brace conflicts)
+    html_body = f'''<body>
     <!-- Page 1: Summary -->
     <div class="page">
         <header class="header">
@@ -746,7 +748,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
 </body>
 </html>'''
     
-    return html
+    return html_head + html_body
 
 
 def build_monthly_html(client, tracker_data, projects, other_stuff, month,
@@ -867,20 +869,23 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     </div>
         '''
 
-    html = f'''<!DOCTYPE html>
+    # Build the head section with CSS (can't use f-string because CSS has curly braces)
+    html_head = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker Report - {client['name']}</title>
-    <link rel="icon" href="{IMAGE_BASE}/favicon.png" type="image/png">
+    <title>Tracker Report</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-{SHARED_CSS}
+''' + SHARED_CSS + '''
     </style>
 </head>
-<body>
+'''
+
+    # Build the body with f-string
+    html_body = f'''<body>
     <div class="page">
         <header class="header">
             <div class="header-left">
@@ -1030,7 +1035,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
 </body>
 </html>'''
     
-    return html
+    return html_head + html_body
 
 
 def html_to_pdf(html_content):

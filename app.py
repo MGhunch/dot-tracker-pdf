@@ -32,14 +32,22 @@ def get_client_data(client_code):
         records = response.json().get('records', [])
         if records:
             fields = records[0].get('fields', {})
+            
+            # Helper to extract value (handles lists from linked records)
+            def get_val(field_name, default=None):
+                val = fields.get(field_name, default)
+                if isinstance(val, list):
+                    return val[0] if val else default
+                return val
+            
             return {
-                'name': fields.get('Client', client_code),
+                'name': get_val('Client', client_code),
                 'code': client_code,
-                'monthlyCommitted': fields.get('Monthly Committed', 10000),
-                'rolloverCredit': fields.get('Rollover Credit', 0),
-                'rolloverQuarter': f"Q{fields.get('Rollover', 1)}",
-                'currentQuarter': fields.get('Current Quarter', 'Q1'),
-                'yearEnd': fields.get('Year end', 'March')
+                'monthlyCommitted': get_val('Monthly Committed', 10000),
+                'rolloverCredit': get_val('Rollover Credit', 0) or 0,
+                'rolloverQuarter': f"Q{get_val('Rollover', 1) or 1}",
+                'currentQuarter': get_val('Current Quarter', 'Q1'),
+                'yearEnd': get_val('Year end', 'March')
             }
     return None
 

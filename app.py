@@ -16,6 +16,14 @@ API_BASE = 'https://dot-remote-api.up.railway.app'
 SERVICE_URL = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'dot-tracker-pdf.up.railway.app')
 IMAGE_BASE = f'https://{SERVICE_URL}/static/images'
 
+# Load shared CSS once at startup
+CSS_PATH = os.path.join(os.path.dirname(__file__), 'static', 'css', 'report.css')
+try:
+    with open(CSS_PATH, 'r') as f:
+        SHARED_CSS = f.read()
+except FileNotFoundError:
+    SHARED_CSS = '/* CSS file not found */'
+
 
 def get_previous_quarter(current_quarter):
     """Get the previous quarter label"""
@@ -365,16 +373,17 @@ def build_html(client, tracker_data, month, is_quarter=False):
     month_abbrevs = [m[:3].upper() for m in quarter_months]
     quarter_range = f"{month_abbrevs[0]}-{month_abbrevs[2]}"
     
-    # Rollover box (only show if there's rollover credit)
+    # Rollover box and note
     rollover_box_html = ''
-    rollover_note_html = ''
     if rollover > 0:
         rollover_box_html = f'''
                 <div class="stat-box rollover-box">
                     <div class="stat-value grey">+{format_currency(rollover)}</div>
                     <div class="stat-label">{rollover_quarter} Rollover</div>
                 </div>'''
-        rollover_note_html = f'<li><strong>Rollover</strong> – Credit from {rollover_quarter} underspend available this quarter.</li>'
+        rollover_note_html = '<li><strong>Rollover</strong> – You can use your rollover credit any time during the quarter. It\'s extra on top of committed spend.</li>'
+    else:
+        rollover_note_html = '<li><strong>Rollover</strong> – Remember, if you don\'t use all your committed spend, it will roll over for the team to use next quarter.</li>'
     
     # Grid columns - 3 if no rollover, 4 if rollover
     grid_columns = 'repeat(4, 1fr)' if rollover > 0 else 'repeat(3, 1fr)'
@@ -411,6 +420,28 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     # Build other stuff summary
     other_summary = build_other_stuff_summary(tracker_data)
     has_other_stuff = other_summary['extra_budget']['count'] > 0 or other_summary['on_us']['count'] > 0
+    
+    # Build chart data - spend per month (monthly committed, not quarterly)
+    monthly_committed = committed // 3  # Monthly budget
+    chart_max = monthly_committed + 5000  # Y-axis max
+    
+    chart_bars_html = ''
+    for m in quarter_months:
+        month_spend = monthly_summary[m]['total_spend']
+        month_abbrev = m[:3]
+        
+        # Calculate bar heights as percentages of chart height
+        committed_height = (monthly_committed / chart_max) * 100
+        spend_height = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        
+        chart_bars_html += f'''
+            <div class="bar-group">
+                <div class="bar-stack" style="height: 100px;">
+                    <div class="bar-committed" style="height: {committed_height}%;"></div>
+                    <div class="bar-spend" style="height: {spend_height}%;"></div>
+                </div>
+                <span class="bar-label">{month_abbrev}</span>
+            </div>'''
     
     # Build summary table rows
     summary_rows = ''
@@ -591,263 +622,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        
-        @page {{ size: A4; margin: 0; }}
-        
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: white;
-            color: #333;
-            line-height: 1.4;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }}
-        
-        .page {{
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm 20mm 15mm 20mm;
-            position: relative;
-            page-break-after: always;
-        }}
-        
-        .page:last-child {{ page-break-after: auto; }}
-        
-        .header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 3px solid #ED1C24;
-        }}
-        
-        .header-logo {{ height: 36px; width: auto; }}
-        .client-logo {{ height: 40px; width: 40px; border-radius: 50%; object-fit: cover; }}
-        
-        .report-title-row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 16px;
-        }}
-        
-        .client-name {{
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 36px;
-            color: #333;
-            letter-spacing: 1px;
-        }}
-        
-        .report-meta-block {{ text-align: right; }}
-        
-        .report-meta {{
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #999;
-        }}
-        
-        .section-title {{
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #999;
-            padding: 10px 0;
-            margin-bottom: 8px;
-        }}
-        
-        .numbers-section {{ margin-bottom: 16px; }}
-        
-        .numbers-grid {{
-            display: grid;
-            gap: 12px;
-            margin-bottom: 12px;
-        }}
-        
-        .stat-box {{
-            background: #f5f5f5;
-            border-radius: 8px;
-            padding: 14px 12px;
-            text-align: center;
-        }}
-        
-        .stat-box.rollover-box {{ background: #fafafa; }}
-        .stat-box.rollover-box .stat-value {{ color: #999; }}
-        
-        .stat-value {{
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 28px;
-            color: #333;
-        }}
-        
-        .stat-value.grey {{ color: #666; }}
-        .stat-value.red {{ color: #ED1C24; }}
-        .stat-value.orange {{ color: #f59e0b; }}
-        
-        .stat-label {{
-            font-size: 9px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 2px;
-        }}
-        
-        .progress-bar {{
-            height: 6px;
-            background: #e5e5e5;
-            border-radius: 3px;
-            overflow: hidden;
-        }}
-        
-        .progress-fill {{
-            height: 100%;
-            background: #ED1C24;
-            border-radius: 3px;
-        }}
-        
-        .progress-fill.over {{
-            background: #f59e0b;
-        }}
-        
-        .projects-section {{
-            margin-bottom: 16px;
-        }}
-        
-        .projects-table, .summary-table {{
-            width: 100%;
-            border-collapse: collapse;
-        }}
-        
-        .projects-table th, .summary-table th {{
-            text-align: left;
-            font-size: 9px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 8px 0;
-            border-bottom: 2px solid #f0f0f0;
-        }}
-        
-        .projects-table td, .summary-table td {{
-            padding: 10px 0;
-            border-bottom: 1px solid #f5f5f5;
-            font-size: 12px;
-            color: #666;
-        }}
-        
-        .project-name {{
-            font-weight: 600;
-            color: #333;
-        }}
-        
-        .description {{
-            max-width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }}
-        
-        .amount {{
-            text-align: right;
-            font-weight: 600;
-            color: #333;
-        }}
-        
-        .amount.ballpark {{ color: #ED1C24; }}
-        .amount.onus {{ color: #999; }}
-        
-        .total-row td {{
-            border-top: 2px solid #e5e5e5;
-            border-bottom: none;
-            padding-top: 12px;
-        }}
-        
-        .subtotal-row td {{
-            border-top: 1px solid #e5e5e5;
-            border-bottom: none;
-            background: #fafafa;
-            padding: 8px 0;
-        }}
-        
-        .more-projects {{
-            text-align: right;
-            font-size: 11px;
-            color: #ED1C24;
-            font-weight: 600;
-            margin-top: 8px;
-        }}
-        
-        .bottom-row {{
-            display: grid;
-            grid-template-columns: 1.3fr 1fr;
-            gap: 20px;
-            margin-top: auto;
-        }}
-        
-        .chart-section {{
-            background: #fafafa;
-            border-radius: 8px;
-            padding: 16px;
-        }}
-        
-        .notes-section {{
-            background: #fafafa;
-            border-radius: 8px;
-            padding: 16px;
-        }}
-        
-        .notes-list {{
-            list-style: none;
-            font-size: 11px;
-            color: #666;
-        }}
-        
-        .notes-list li {{
-            margin-bottom: 8px;
-            line-height: 1.4;
-        }}
-        
-        .notes-list strong {{
-            color: #333;
-        }}
-        
-        .footer {{
-            position: absolute;
-            bottom: 15mm;
-            left: 20mm;
-            right: 20mm;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-        
-        .footer-logo {{ height: 24px; width: auto; }}
-        
-        .footer-center {{
-            font-size: 9px;
-            color: #999;
-        }}
-        
-        .footer-tagline {{
-            font-size: 9px;
-            color: #999;
-            letter-spacing: 0.5px;
-        }}
-        
-        .page-2-header {{
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #999;
-            margin-bottom: 16px;
-        }}
+{SHARED_CSS}
     </style>
 </head>
 <body>
@@ -912,9 +687,15 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         <div class="bottom-row">
             <div class="chart-section">
                 <div class="section-title">Tracker</div>
-                <!-- Chart placeholder -->
-                <div style="height: 120px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 11px;">
-                    Chart coming soon
+                <div class="chart-wrapper">
+                    <div class="committed-line"></div>
+                    <div class="chart-container">
+                        {chart_bars_html}
+                    </div>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Spend</span></div>
+                    <div class="legend-item"><div class="legend-swatch committed-swatch"></div><span>Committed</span></div>
                 </div>
             </div>
             
@@ -1096,355 +877,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        
-        @page {{ size: A4; margin: 0; }}
-        
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: white;
-            color: #333;
-            line-height: 1.4;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }}
-        
-        .page {{
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm 20mm 15mm 20mm;
-            margin: 0 auto;
-            background: white;
-            position: relative;
-        }}
-        
-        .header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 16px;
-            border-bottom: 3px solid #ED1C24;
-            margin-bottom: 16px;
-        }}
-        
-        .header-left {{ display: flex; align-items: center; }}
-        .header-logo {{ height: 40px; width: auto; }}
-        .header-right {{ display: flex; align-items: center; }}
-        .client-logo {{ height: 40px; width: 40px; border-radius: 50%; object-fit: cover; }}
-        
-        .report-title-row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }}
-        
-        .client-name {{
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 28px;
-            color: #1a1a1a;
-            letter-spacing: 1px;
-        }}
-        
-        .report-meta-block {{ text-align: right; }}
-        .report-meta {{
-            font-size: 11px;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        
-        .report-date {{
-            font-size: 11px;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 2px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }}
-        
-        .section-title {{
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #999;
-            padding: 10px 0;
-            margin-bottom: 8px;
-        }}
-        
-        .numbers-section {{ margin-bottom: 20px; }}
-        
-        .numbers-grid {{
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 12px;
-        }}
-        
-        .stat-box {{
-            background: #f5f5f5;
-            border-radius: 8px;
-            padding: 14px 12px;
-            text-align: center;
-        }}
-        
-        .stat-box.rollover-box {{ background: #fafafa; }}
-        .stat-box.rollover-box .stat-value {{ color: #999; }}
-        
-        .stat-value {{
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 28px;
-            color: #333;
-        }}
-        
-        .stat-value.grey {{ color: #666; }}
-        .stat-value.red {{ color: #ED1C24; }}
-        .stat-value.orange {{ color: #f59e0b; }}
-        
-        .stat-label {{
-            font-size: 9px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 2px;
-        }}
-        
-        .progress-bar {{
-            height: 6px;
-            background: #e5e5e5;
-            border-radius: 3px;
-            overflow: hidden;
-        }}
-        
-        .progress-fill {{
-            height: 100%;
-            background: #ED1C24;
-            border-radius: 3px;
-        }}
-        
-        .progress-fill.over {{
-            background: #f59e0b;
-        }}
-        
-        .projects-section {{ margin-bottom: 20px; }}
-        
-        .projects-table {{
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }}
-        
-        .projects-table th {{
-            text-align: left;
-            font-size: 9px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 8px 0;
-            border-bottom: 2px solid #e5e5e5;
-        }}
-        
-        .projects-table th:last-child {{ text-align: right; }}
-        
-        .projects-table td {{
-            padding: 10px 0;
-            border-bottom: 1px solid #f0f0f0;
-            color: #666;
-            vertical-align: top;
-        }}
-        
-        .projects-table td.description {{
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
-        }}
-        
-        .projects-table tr:last-child td {{ border-bottom: none; }}
-        
-        .project-name {{ font-weight: 600; color: #333; }}
-        .amount {{ text-align: right; font-weight: 600; color: #333; }}
-        .amount.ballpark {{ color: #ED1C24; }}
-        .amount.onus {{ color: #999; }}
-        
-        .more-projects {{
-            text-align: right;
-            font-size: 10px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #f0f0f0;
-        }}
-        
-        .two-col {{
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }}
-        
-        .chart-section {{
-            background: #fafafa;
-            border-radius: 8px;
-            padding: 16px;
-        }}
-        
-        .chart-wrapper {{
-            position: relative;
-            padding-left: 32px;
-            height: 120px;
-        }}
-        
-        .y-axis {{
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 20px;
-            width: 28px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }}
-        
-        .y-label {{
-            font-size: 8px;
-            color: #999;
-            text-align: right;
-            padding-right: 4px;
-        }}
-        
-        .chart-container {{
-            display: flex;
-            align-items: flex-end;
-            gap: 8px;
-            height: 100px;
-            position: relative;
-        }}
-        
-        .committed-line {{
-            position: absolute;
-            left: 0;
-            right: 0;
-            border-top: 1.5px dashed #c0c0c0;
-            z-index: 5;
-        }}
-        
-        .bar-group {{
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }}
-        
-        .bar-stack {{
-            position: relative;
-            width: 24px;
-        }}
-        
-        .bar-committed {{
-            width: 100%;
-            background: #e0e0e0;
-            border-radius: 2px 2px 0 0;
-        }}
-        
-        .bar-spend {{
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #ED1C24;
-            border-radius: 2px 2px 0 0;
-        }}
-        
-        .bar-label {{
-            font-size: 8px;
-            color: #999;
-            text-transform: uppercase;
-            margin-top: 6px;
-        }}
-        
-        .chart-legend {{
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px solid #e5e5e5;
-        }}
-        
-        .legend-item {{
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 8px;
-            color: #666;
-        }}
-        
-        .legend-swatch {{
-            width: 12px;
-            height: 8px;
-            border-radius: 1px;
-        }}
-        
-        .legend-swatch.spend {{ background: #ED1C24; }}
-        .legend-swatch.committed {{ background: #e0e0e0; }}
-        
-        .notes-section {{
-            background: #fafafa;
-            border-radius: 8px;
-            padding: 16px;
-        }}
-        
-        .notes-list {{ list-style: none; }}
-        
-        .notes-list li {{
-            font-size: 11px;
-            color: #666;
-            padding: 6px 0 6px 14px;
-            position: relative;
-            line-height: 1.4;
-        }}
-        
-        .notes-list li::before {{
-            content: '•';
-            position: absolute;
-            left: 0;
-            color: #ED1C24;
-            font-weight: bold;
-        }}
-        
-        .footer {{
-            position: absolute;
-            bottom: 15mm;
-            left: 20mm;
-            right: 20mm;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 12px;
-            border-top: 1px solid #e5e5e5;
-        }}
-        
-        .footer-left {{ display: flex; align-items: center; }}
-        .footer-logo {{ height: 32px; width: auto; }}
-        .footer-tagline {{
-            font-size: 10px;
-            color: #999;
-            letter-spacing: 0.5px;
-        }}
-        
-        @media print {{
-            body {{ background: white; }}
-            .page {{ margin: 0; padding: 20mm; page-break-after: always; }}
-        }}
+{SHARED_CSS}
     </style>
 </head>
 <body>

@@ -71,14 +71,18 @@ def get_projects_for_client(client_code):
             break
     
     # Return as dict keyed by Job Number for easy lookup
-    return {
-        r['fields'].get('Job Number', ''): {
+    result = {}
+    for r in all_records:
+        job_num = r['fields'].get('Job Number', '')
+        # Handle if Job Number is a list (linked record) or string
+        if isinstance(job_num, list):
+            job_num = job_num[0] if job_num else ''
+        result[job_num] = {
             'projectName': r['fields'].get('Project Name', ''),
             'owner': r['fields'].get('Project Owner', ''),
             'description': r['fields'].get('Description', ''),
         }
-        for r in all_records
-    }
+    return result
 
 
 def get_tracker_data(client_code, month=None):
@@ -108,6 +112,9 @@ def get_tracker_data(client_code, month=None):
         
         for r in records:
             job_number = r['fields'].get('Job Number', '')
+            # Handle if Job Number is a list (linked record) or string
+            if isinstance(job_number, list):
+                job_number = job_number[0] if job_number else ''
             project = projects_lookup.get(job_number, {})
             
             result.append({

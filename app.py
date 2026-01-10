@@ -229,6 +229,13 @@ def build_html(client, tracker_data, month, is_quarter=False):
     remaining = available - grand_total
     spend_percent = min(100, round((grand_total / available) * 100)) if available > 0 else 0
     
+    # Determine if overspent
+    is_overspent = remaining < 0
+    
+    # Color classes
+    remaining_class = 'orange' if is_overspent else 'red'
+    progress_class = 'over' if is_overspent else ''
+    
     # Pagination rules
     has_other_stuff = len(other_stuff) > 0
     max_page1_projects = 4 if has_other_stuff else 7
@@ -240,9 +247,6 @@ def build_html(client, tracker_data, month, is_quarter=False):
     today = datetime.now()
     report_date = today.strftime('%d %b')
     quarter_label = client['currentQuarter']
-    
-    # Determine remaining color
-    remaining_class = 'red' if remaining < 0 else ''
     
     # Build page 1 project rows
     page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
@@ -309,7 +313,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
                 <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
             </div>
             <div class="header-right">
-                <img src="{IMAGE_BASE}/logos/{client['code']}.png" alt="{client['name']}" class="client-logo">
+                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
             </div>
         </header>
         
@@ -475,6 +479,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
         
         .stat-value.grey {{ color: #666; }}
         .stat-value.red {{ color: #ED1C24; }}
+        .stat-value.orange {{ color: #f59e0b; }}
         
         .stat-label {{
             font-size: 9px;
@@ -496,6 +501,10 @@ def build_html(client, tracker_data, month, is_quarter=False):
             height: 100%;
             background: #ED1C24;
             border-radius: 3px;
+        }}
+        
+        .progress-fill.over {{
+            background: #f59e0b;
         }}
         
         .projects-section {{ margin-bottom: 20px; }}
@@ -722,7 +731,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
                 <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
             </div>
             <div class="header-right">
-                <img src="{IMAGE_BASE}/logos/{client['code']}.png" alt="{client['name']}" class="client-logo">
+                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
             </div>
         </header>
         
@@ -762,7 +771,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
                 </div>
             </div>
             <div class="progress-bar">
-                <div class="progress-fill" style="width: {spend_percent}%;"></div>
+                <div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>
             </div>
         </div>
         

@@ -313,7 +313,7 @@ def build_monthly_summary(tracker_data, quarter_months):
 def build_other_stuff_summary(tracker_data):
     """Build other stuff summary for quarterly report front page"""
     extra_budget = {'count': 0, 'spend': 0}
-    on_us = {'count': 0, 'spend': 0}
+    on_us = {'count': 0, 'value': 0, 'items': []}
     
     for record in tracker_data:
         spend_type = record.get('spendType', '')
@@ -324,7 +324,8 @@ def build_other_stuff_summary(tracker_data):
             extra_budget['spend'] += spend
         elif spend_type == 'Project on us':
             on_us['count'] += 1
-            # On us shows $0
+            on_us['value'] += spend  # Track value for display
+            on_us['items'].append(record)
     
     return {'extra_budget': extra_budget, 'on_us': on_us}
 
@@ -463,7 +464,13 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     
     # Build other stuff summary
     other_summary = build_other_stuff_summary(tracker_data)
-    has_other_stuff = other_summary['extra_budget']['count'] > 0 or other_summary['on_us']['count'] > 0
+    has_other_stuff = other_summary['on_us']['count'] > 0  # Only On Us shows in table
+    has_extra_budget = other_summary['extra_budget']['count'] > 0  # Extra budget goes to footnote
+    
+    # Build extra budget footnote
+    extra_budget_note = ''
+    if has_extra_budget:
+        extra_budget_note = f'<li><strong>Extra projects</strong> – Plus {format_currency(other_summary["extra_budget"]["spend"])} extra projects outside of committed spend.</li>'
     
     # Build chart data - spend per month (monthly committed, not quarterly)
     monthly_committed = committed // 3  # Monthly budget
@@ -582,38 +589,33 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <td style="text-align: right;"><strong>{format_currency(total_spend_rounded)}</strong></td>
         </tr>'''
     
-    # Build other stuff summary table
+    # Build Projects On Us section (only on_us items, not extra_budget)
     other_stuff_html = ''
     if has_other_stuff:
-        other_rows = ''
-        if other_summary['extra_budget']['count'] > 0:
-            other_rows += f'''
+        on_us_rows = ''
+        for item in other_summary['on_us']['items']:
+            on_us_rows += f'''
                 <tr>
-                    <td>Extra budget</td>
-                    <td style="text-align: center;">{other_summary['extra_budget']['count']}</td>
-                    <td style="text-align: right;">{format_currency_full(other_summary['extra_budget']['spend'])}</td>
-                </tr>'''
-        if other_summary['on_us']['count'] > 0:
-            other_rows += f'''
-                <tr>
-                    <td>On us</td>
-                    <td style="text-align: center;">{other_summary['on_us']['count']}</td>
-                    <td style="text-align: right;">$0</td>
+                    <td class="project-name">{item['jobNumber']} · {item['projectName']}</td>
+                    <td>{item.get('owner', '')}</td>
+                    <td class="description">{item.get('description', '')}</td>
+                    <td class="amount">{format_currency_full(item.get('spend', 0))}</td>
                 </tr>'''
         
         other_stuff_html = f'''
         <div class="projects-section">
-            <div class="section-title">Other Stuff</div>
-            <table class="summary-table">
+            <div class="section-title">Projects On Us</div>
+            <table class="projects-table">
                 <thead>
                     <tr>
-                        <th>Type</th>
-                        <th style="text-align: center;">Projects</th>
-                        <th style="text-align: right;">Amount</th>
+                        <th style="width: 35%;">Project</th>
+                        <th style="width: 20%;">Owner</th>
+                        <th>Description</th>
+                        <th style="width: 70px;">Value</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {other_rows}
+                    {on_us_rows}
                 </tbody>
             </table>
         </div>'''
@@ -663,33 +665,32 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             </table>
         </div>'''
     
-    # Build other stuff detail for back page
+    # Build Projects On Us detail for back page (only on_us items)
     other_detail_html = ''
     if has_other_stuff:
-        other_items = [r for r in tracker_data if r['spendType'] != 'Project budget']
-        if other_items:
+        on_us_items = [r for r in tracker_data if r.get('spendType') == 'Project on us']
+        if on_us_items:
             other_rows = ''
-            for p in other_items:
-                display_amount = '$0' if p.get('onUs') else format_currency_full(p.get('spend', 0))
-                ballpark_class = ' ballpark' if p.get('ballpark') else ''
+            for p in on_us_items:
+                display_amount = format_currency_full(p.get('spend', 0))
                 other_rows += f'''
                     <tr>
                         <td class="project-name">{p['jobNumber']} · {p['projectName']}</td>
                         <td>{p.get('owner', '')}</td>
                         <td class="description">{p.get('description', '')}</td>
-                        <td class="amount{ballpark_class}">{display_amount}</td>
+                        <td class="amount">{display_amount}</td>
                     </tr>'''
             
             other_detail_html = f'''
             <div class="projects-section">
-                <div class="section-title">Other Stuff</div>
+                <div class="section-title">Projects On Us</div>
                 <table class="projects-table">
                     <thead>
                         <tr>
                             <th style="width: 30%;">Project</th>
                             <th style="width: 18%;">Owner</th>
                             <th>Description</th>
-                            <th style="width: 70px;">Amount</th>
+                            <th style="width: 70px;">Value</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -799,6 +800,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                     <li><strong>Always on</strong> – This covers ongoing support, consults, and reporting outside specific jobs.</li>
                     <li><strong>Ballparks</strong> – Red numbers are ballparks. Most jobs start as a $5K ballpark before we lock in scope.</li>
                     {rollover_note_html}
+                    {extra_budget_note}
                 </ul>
             </div>
         </div>
@@ -866,7 +868,19 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                        quarter_label, report_date, today):
     """Build HTML for monthly report (original single-page layout)"""
     
-    has_other_stuff = len(other_stuff) > 0
+    # Separate On Us from Extra Budget in other_stuff
+    on_us_items = [r for r in other_stuff if r.get('spendType') == 'Project on us']
+    extra_budget_items = [r for r in other_stuff if r.get('spendType') == 'Extra budget']
+    
+    has_other_stuff = len(on_us_items) > 0  # Only On Us shows in table
+    has_extra_budget = len(extra_budget_items) > 0
+    
+    # Build extra budget footnote
+    extra_budget_note = ''
+    if has_extra_budget:
+        extra_budget_total = sum(r.get('spend', 0) for r in extra_budget_items)
+        extra_budget_note = f'<li><strong>Extra projects</strong> – Plus {format_currency(extra_budget_total)} extra projects outside of committed spend.</li>'
+    
     max_page1_projects = 4 if has_other_stuff else 7
     page1_projects = projects[:max_page1_projects]
     page2_projects = projects[max_page1_projects:]
@@ -944,22 +958,22 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     # Build page 1 project rows
     page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
     
-    # Build other stuff rows
-    other_rows = ''.join(build_project_row(p, truncate=True) for p in other_stuff)
+    # Build On Us rows (only on_us_items, not extra_budget)
+    other_rows = ''.join(build_project_row(p, truncate=True) for p in on_us_items)
     
-    # Other stuff section HTML
+    # Projects On Us section HTML
     other_stuff_html = ''
     if has_other_stuff:
         other_stuff_html = f'''
         <div class="projects-section">
-            <div class="section-title">Other Stuff</div>
+            <div class="section-title">Projects On Us</div>
             <table class="projects-table">
                 <thead>
                     <tr>
                         <th style="width: 35%;">Project</th>
                         <th style="width: 20%;">Owner</th>
                         <th>Description</th>
-                        <th style="width: 70px;">Amount</th>
+                        <th style="width: 70px;">Value</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -976,20 +990,20 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     page2_html = ''
     if needs_page2:
         page2_project_rows = ''.join(build_project_row(p, truncate=False) for p in projects)
-        page2_other_rows = ''.join(build_project_row(p, truncate=False) for p in other_stuff)
+        page2_other_rows = ''.join(build_project_row(p, truncate=False) for p in on_us_items)
         
         page2_other_html = ''
         if has_other_stuff:
             page2_other_html = f'''
             <div class="projects-section">
-                <div class="section-title">Other Stuff</div>
+                <div class="section-title">Projects On Us</div>
                 <table class="projects-table">
                     <thead>
                         <tr>
                             <th style="width: 35%;">Project</th>
                             <th style="width: 20%;">Owner</th>
                             <th>Description</th>
-                            <th style="width: 70px;">Amount</th>
+                            <th style="width: 70px;">Value</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1154,6 +1168,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                     <li><strong>Always on</strong> – This covers ongoing support, consults, and reporting outside specific jobs.</li>
                     <li><strong>Ballparks</strong> – Red numbers are ballparks. Most jobs start as a $5K ballpark before we lock in scope.</li>
                     {rollover_note_html}
+                    {extra_budget_note}
                 </ul>
             </div>
         </div>

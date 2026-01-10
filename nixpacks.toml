@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["...", "pango", "fontconfig", "gdk-pixbuf", "libffi", "zlib", "shared-mime-info"]
+nixPkgs = ["glib", "gobject-introspection", "pango", "fontconfig", "harfbuzz", "cairo", "gdk-pixbuf", "libffi", "zlib", "shared-mime-info"]
 
 [phases.install]
 cmds = ["pip install -r requirements.txt"]

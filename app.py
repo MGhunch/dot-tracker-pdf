@@ -1,4 +1,4 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import os
@@ -6,14 +6,15 @@ from datetime import datetime
 import subprocess
 import tempfile
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CORS(app)
 
 # Use dot-remote-api for data (it handles all the Airtable lookups)
 API_BASE = 'https://dot-remote-api.up.railway.app'
 
-# Image base URL (GitHub Pages - dot-remote)
-IMAGE_BASE = 'https://mghunch.github.io/dot-remote/public/images'
+# Get the base URL for this service (for static files)
+SERVICE_URL = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'dot-tracker-pdf.up.railway.app')
+IMAGE_BASE = f'https://{SERVICE_URL}/static/images'
 
 
 def get_previous_quarter(current_quarter):
@@ -363,6 +364,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tracker Report - {client['name']}</title>
+    <link rel="icon" href="{IMAGE_BASE}/favicon.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">

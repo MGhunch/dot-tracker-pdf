@@ -13,7 +13,7 @@ CORS(app)
 API_BASE = 'https://dot-remote-api.up.railway.app'
 
 # Image base URL (GitHub Pages - dot-remote)
-IMAGE_BASE = 'https://mghunch.github.io/dot-remote/images'
+IMAGE_BASE = 'https://mghunch.github.io/dot-remote/public/images'
 
 
 def get_previous_quarter(current_quarter):

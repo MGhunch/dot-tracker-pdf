@@ -450,6 +450,13 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     # Grey bar height - committed level as % of chart max
     committed_pct = (monthly_committed / chart_max) * 100
     
+    # Build y-axis labels (5 labels from max to 0)
+    y_axis_html = ''
+    for i in range(5, -1, -1):
+        value = int(chart_max * i / 5)
+        label = f'${value // 1000}k' if value >= 1000 else f'${value}'
+        y_axis_html += f'<span class="y-label">{label}</span>\n                        '
+    
     # Get previous quarter months and their spend
     prev_quarter_months = get_previous_quarter_months(quarter_months)
     
@@ -749,14 +756,18 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="chart-section">
                 <div class="section-title">Tracker</div>
                 <div class="chart-wrapper">
+                    <div class="y-axis">
+                        {y_axis_html}
+                    </div>
                     <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                     <div class="chart-container">
                         {chart_bars_html}
                     </div>
                 </div>
                 <div class="chart-legend">
-                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Spend</span></div>
+                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Projects</span></div>
                     <div class="legend-item"><div class="legend-swatch committed-swatch"></div><span>Committed</span></div>
+                    <div class="legend-item"><div class="legend-swatch ballpark"></div><span>Ballpark</span></div>
                 </div>
             </div>
             
@@ -846,6 +857,13 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     
     # Grey bar height - committed level as % of chart max
     committed_pct = (monthly_committed / chart_max) * 100
+    
+    # Build y-axis labels (5 labels from max to 0)
+    y_axis_html = ''
+    for i in range(5, -1, -1):
+        value = int(chart_max * i / 5)
+        label = f'${value // 1000}k' if value >= 1000 else f'${value}'
+        y_axis_html += f'<span class="y-label">{label}</span>\n                        '
     
     # Get previous quarter months
     prev_quarter_months = get_previous_quarter_months(quarter_months)
@@ -1092,11 +1110,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                 <div class="section-title">Tracker</div>
                 <div class="chart-wrapper">
                     <div class="y-axis">
-                        <span class="y-label">$20k</span>
-                        <span class="y-label">$15k</span>
-                        <span class="y-label">$10k</span>
-                        <span class="y-label">$5k</span>
-                        <span class="y-label">$0</span>
+                        {y_axis_html}
                     </div>
                     <div class="committed-line" style="bottom: {committed_line_bottom}%;"></div>
                     <div class="chart-container">
@@ -1104,8 +1118,9 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                     </div>
                 </div>
                 <div class="chart-legend">
-                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Spend</span></div>
+                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Projects</span></div>
                     <div class="legend-item"><div class="legend-swatch committed"></div><span>Committed</span></div>
+                    <div class="legend-item"><div class="legend-swatch ballpark"></div><span>Ballpark</span></div>
                 </div>
             </div>
             

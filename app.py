@@ -85,80 +85,32 @@ def get_tracker_data(client_code, month=None):
 
 
 def aggregate_quarterly_data(tracker_data):
-    """Aggregate tracker data by job number for quarterly view"""
-    # Month order for sorting
-    month_order = {
-        'January': 1, 'February': 2, 'March': 3, 'April': 4,
-        'May': 5, 'June': 6, 'July': 7, 'August': 8,
-        'September': 9, 'October': 10, 'November': 11, 'December': 12
-    }
+    """For quarterly view, add month prefix to descriptions but keep individual rows"""
     
-    # Group by job number
-    jobs = {}
-    for record in tracker_data:
-        job_num = record['jobNumber']
-        if job_num not in jobs:
-            jobs[job_num] = {
-                'jobNumber': job_num,
-                'projectName': record['projectName'],
-                'owner': record['owner'],
-                'spendType': record['spendType'],
-                'ballpark': record['ballpark'],
-                'onUs': record['onUs'],
-                'spend': 0,
-                'entries': []  # Track month + description pairs
-            }
-        
-        jobs[job_num]['spend'] += record['spend'] or 0
-        jobs[job_num]['entries'].append({
-            'month': record['month'],
-            'description': record['description'],
-            'month_num': month_order.get(record['month'], 0)
-        })
-        
-        # If any entry is ballpark, mark the whole job as ballpark
-        if record['ballpark']:
-            jobs[job_num]['ballpark'] = True
-    
-    # Build aggregated descriptions
     result = []
-    for job_num, job in jobs.items():
-        # Sort entries by month
-        job['entries'].sort(key=lambda x: x['month_num'])
+    for record in tracker_data:
+        month = record.get('month', '')
+        month_abbrev = month[:3] if month else ''  # Jan, Feb, etc.
+        description = record.get('description', '')
         
-        # Get unique descriptions in month order
-        seen_descriptions = set()
-        unique_entries = []
-        for entry in job['entries']:
-            desc = entry['description']
-            if desc and desc not in seen_descriptions:
-                seen_descriptions.add(desc)
-                unique_entries.append(entry)
-        
-        # Build description string
-        if len(unique_entries) == 0:
-            description = ''
-        elif len(unique_entries) == 1:
-            # Single description - no month prefix needed
-            description = unique_entries[0]['description']
+        # Add month prefix to description
+        if month_abbrev and description:
+            prefixed_description = f"{month_abbrev}: {description}"
+        elif month_abbrev:
+            prefixed_description = month_abbrev
         else:
-            # Multiple descriptions - show month: description → month: description
-            parts = []
-            for entry in unique_entries:
-                month_abbrev = entry['month'][:3]  # Jan, Feb, etc.
-                parts.append(f"{month_abbrev}: {entry['description']}")
-            description = ' → '.join(parts)
+            prefixed_description = description
         
         result.append({
-            'jobNumber': job['jobNumber'],
-            'projectName': job['projectName'],
-            'owner': job['owner'],
-            'description': description,
-            'spend': job['spend'],
-            'spendType': job['spendType'],
-            'ballpark': job['ballpark'],
-            'onUs': job['onUs'],
-            'month': ''  # Not applicable for quarterly
+            'jobNumber': record.get('jobNumber', ''),
+            'projectName': record.get('projectName', ''),
+            'owner': record.get('owner', ''),
+            'description': prefixed_description,
+            'spend': record.get('spend', 0) or 0,
+            'spendType': record.get('spendType', 'Project budget'),
+            'ballpark': record.get('ballpark', False),
+            'onUs': record.get('onUs', False),
+            'month': month
         })
     
     # Sort by spend descending
@@ -216,10 +168,9 @@ def build_html(client, tracker_data, month, is_quarter=False):
     projects.sort(key=lambda x: x['spend'] or 0, reverse=True)
     other_stuff.sort(key=lambda x: x['spend'] or 0, reverse=True)
     
-    # Calculate totals
+    # Calculate totals - ONLY Project budget counts toward committed
     projects_total = sum(p['spend'] or 0 for p in projects)
-    other_total = sum(p['spend'] or 0 for p in other_stuff if not p['onUs'])
-    grand_total = projects_total + other_total
+    grand_total = projects_total  # Other Stuff doesn't count against committed
     
     # Get client numbers
     committed = client['monthlyCommitted']

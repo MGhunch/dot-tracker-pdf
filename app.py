@@ -969,7 +969,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         
         {other_stuff_html}
         
-        <div class="two-col">
+        <div class="bottom-row">
             <div class="chart-section">
                 <div class="section-title">Tracker</div>
                 <div class="chart-wrapper">

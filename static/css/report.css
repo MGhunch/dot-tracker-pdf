@@ -414,14 +414,17 @@ body {
 
 .footer-left { display: flex; align-items: center; }
 .footer-logo { height: 32px; width: auto; }
-.footer-center {
-    font-size: 9px;
-    color: #999;
-}
 .footer-tagline {
     font-size: 10px;
     color: #999;
     letter-spacing: 0.5px;
+}
+.footer-date {
+    font-size: 9px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Print Styles */

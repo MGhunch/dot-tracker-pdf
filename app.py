@@ -9,138 +9,65 @@ import tempfile
 app = Flask(__name__)
 CORS(app)
 
-# Airtable config
-AIRTABLE_API_KEY = os.environ.get('AIRTABLE_API_KEY')
-AIRTABLE_BASE_ID = os.environ.get('AIRTABLE_BASE_ID', 'app8CI7NAZqhQ4G1Y')
+# Use dot-remote-api for data (it handles all the Airtable lookups)
+API_BASE = 'https://dot-remote-api.up.railway.app'
 
-HEADERS = {
-    'Authorization': f'Bearer {AIRTABLE_API_KEY}',
-    'Content-Type': 'application/json'
-}
-
-# Image base URL (GitHub Pages)
-IMAGE_BASE = 'https://hunchee.github.io/dot-images'
+# Image base URL (GitHub Pages - dot-remote)
+IMAGE_BASE = 'https://hunchee.github.io/dot-remote/images'
 
 
 def get_client_data(client_code):
-    """Fetch client info from Airtable"""
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/Clients"
-    params = {'filterByFormula': f'{{Client Code}}="{client_code}"'}
-    
-    response = requests.get(url, headers=HEADERS, params=params)
-    if response.status_code == 200:
-        records = response.json().get('records', [])
-        if records:
-            fields = records[0].get('fields', {})
-            
-            # Helper to extract value (handles lists from linked records)
-            def get_val(field_name, default=None):
-                val = fields.get(field_name, default)
-                if isinstance(val, list):
-                    return val[0] if val else default
-                return val
-            
-            return {
-                'name': get_val('Client', client_code),
-                'code': client_code,
-                'monthlyCommitted': get_val('Monthly Committed', 10000),
-                'rolloverCredit': get_val('Rollover Credit', 0) or 0,
-                'rolloverQuarter': f"Q{get_val('Rollover', 1) or 1}",
-                'currentQuarter': get_val('Current Quarter', 'Q1'),
-                'yearEnd': get_val('Year end', 'March')
-            }
+    """Fetch client info from dot-remote-api"""
+    try:
+        response = requests.get(f"{API_BASE}/tracker/clients")
+        if response.status_code == 200:
+            clients = response.json()
+            for c in clients:
+                if c.get('code') == client_code:
+                    return {
+                        'name': c.get('name', client_code),
+                        'code': client_code,
+                        'monthlyCommitted': c.get('committed', 10000),
+                        'rolloverCredit': c.get('rollover', 0) or 0,
+                        'rolloverQuarter': c.get('rolloverUseIn', 'Q1') or 'Q1',
+                        'currentQuarter': c.get('currentQuarter', 'Q1'),
+                        'yearEnd': c.get('yearEnd', 'March')
+                    }
+    except Exception as e:
+        print(f"Error fetching client data: {e}")
     return None
 
 
-def get_projects_for_client(client_code):
-    """Fetch all projects for a client from Airtable"""
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/Projects"
-    
-    # Client code is the prefix of Job Number (e.g., "TOW" in "TOW 087")
-    formula = f'SEARCH("{client_code}", {{Job Number}})'
-    
-    params = {'filterByFormula': formula}
-    
-    all_records = []
-    offset = None
-    
-    while True:
-        if offset:
-            params['offset'] = offset
-        
-        response = requests.get(url, headers=HEADERS, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            all_records.extend(data.get('records', []))
-            offset = data.get('offset')
-            if not offset:
-                break
-        else:
-            break
-    
-    # Return as dict keyed by Job Number for easy lookup
-    result = {}
-    for r in all_records:
-        job_num = r['fields'].get('Job Number', '')
-        # Handle if Job Number is a list (linked record) or string
-        if isinstance(job_num, list):
-            job_num = job_num[0] if job_num else ''
-        result[job_num] = {
-            'projectName': r['fields'].get('Project Name', ''),
-            'owner': r['fields'].get('Project Owner', ''),
-            'description': r['fields'].get('Description', ''),
-        }
-    return result
-
-
 def get_tracker_data(client_code, month=None):
-    """Fetch tracker records from Airtable and join with Projects"""
-    
-    # First get all projects for this client (for the join)
-    projects_lookup = get_projects_for_client(client_code)
-    
-    # Now get tracker records
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/Tracker"
-    
-    if month:
-        formula = f'AND({{Client Code}}="{client_code}", {{Month}}="{month}")'
-    else:
-        formula = f'{{Client Code}}="{client_code}"'
-    
-    params = {
-        'filterByFormula': formula,
-        'sort[0][field]': 'Spend',
-        'sort[0][direction]': 'desc'
-    }
-    
-    response = requests.get(url, headers=HEADERS, params=params)
-    if response.status_code == 200:
-        records = response.json().get('records', [])
-        result = []
-        
-        for r in records:
-            job_number = r['fields'].get('Job Number', '')
-            # Handle if Job Number is a list (linked record) or string
-            if isinstance(job_number, list):
-                job_number = job_number[0] if job_number else ''
-            project = projects_lookup.get(job_number, {})
+    """Fetch tracker records from dot-remote-api"""
+    try:
+        response = requests.get(f"{API_BASE}/tracker/data?client={client_code}")
+        if response.status_code == 200:
+            records = response.json()
+            result = []
             
-            result.append({
-                'jobNumber': job_number,
-                # Use Tracker's Project Name if set, otherwise fall back to Projects
-                'projectName': r['fields'].get('Project Name') or project.get('projectName', ''),
-                # Owner comes from Projects table (Project Owner field)
-                'owner': project.get('owner', ''),
-                # Description comes from Projects table
-                'description': project.get('description', ''),
-                'spend': r['fields'].get('Spend', 0),
-                'spendType': r['fields'].get('Spend type', 'Project budget'),
-                'ballpark': r['fields'].get('Ballpark', False),
-                'onUs': r['fields'].get('On us', False),
-                'month': r['fields'].get('Month', '')
-            })
-        
-        return result
+            for r in records:
+                # Filter by month if specified
+                if month and r.get('month') != month:
+                    continue
+                    
+                result.append({
+                    'jobNumber': r.get('jobNumber', ''),
+                    'projectName': r.get('projectName', ''),
+                    'owner': r.get('owner', ''),
+                    'description': r.get('description', ''),
+                    'spend': r.get('spend', 0) or 0,
+                    'spendType': r.get('spendType', 'Project budget'),
+                    'ballpark': r.get('ballpark', False),
+                    'onUs': r.get('spendType') == 'Project on us',
+                    'month': r.get('month', '')
+                })
+            
+            # Sort by spend descending
+            result.sort(key=lambda x: x['spend'], reverse=True)
+            return result
+    except Exception as e:
+        print(f"Error fetching tracker data: {e}")
     return []
 
 

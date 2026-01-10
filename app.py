@@ -28,6 +28,81 @@ def get_previous_quarter(current_quarter):
     return quarter_map.get(current_quarter, 'Q1')
 
 
+def get_quarter_months(month):
+    """Get the 3 months in a quarter based on any month in that quarter"""
+    quarter_groups = {
+        'October': ['October', 'November', 'December'],
+        'November': ['October', 'November', 'December'],
+        'December': ['October', 'November', 'December'],
+        'January': ['January', 'February', 'March'],
+        'February': ['January', 'February', 'March'],
+        'March': ['January', 'February', 'March'],
+        'April': ['April', 'May', 'June'],
+        'May': ['April', 'May', 'June'],
+        'June': ['April', 'May', 'June'],
+        'July': ['July', 'August', 'September'],
+        'August': ['July', 'August', 'September'],
+        'September': ['July', 'August', 'September'],
+    }
+    return quarter_groups.get(month, ['January', 'February', 'March'])
+
+
+def get_quarter_label_for_months(months, year_end):
+    """
+    Get the quarter label (Q1-Q4) for a set of months based on client's year end.
+    
+    Year ends and their Q1 start months:
+    - September year end (Tower): Q1 starts October
+    - June year end (Sky, Eon): Q1 starts July
+    - March year end (everyone else): Q1 starts April
+    """
+    # Determine which quarter group these months belong to
+    first_month = months[0] if months else 'January'
+    
+    # Map year end to quarter labels for each month group
+    quarter_labels = {
+        'September': {  # Tower: Oct=Q1, Jan=Q2, Apr=Q3, Jul=Q4
+            'October': 'Q1',
+            'January': 'Q2',
+            'April': 'Q3',
+            'July': 'Q4'
+        },
+        'June': {  # Sky, Eon: Jul=Q1, Oct=Q2, Jan=Q3, Apr=Q4
+            'July': 'Q1',
+            'October': 'Q2',
+            'January': 'Q3',
+            'April': 'Q4'
+        },
+        'March': {  # Everyone else: Apr=Q1, Jul=Q2, Oct=Q3, Jan=Q4
+            'April': 'Q1',
+            'July': 'Q2',
+            'October': 'Q3',
+            'January': 'Q4'
+        }
+    }
+    
+    # Get the quarter start month for this group
+    quarter_starts = {
+        'October': 'October',
+        'November': 'October',
+        'December': 'October',
+        'January': 'January',
+        'February': 'January',
+        'March': 'January',
+        'April': 'April',
+        'May': 'April',
+        'June': 'April',
+        'July': 'July',
+        'August': 'July',
+        'September': 'July'
+    }
+    
+    quarter_start = quarter_starts.get(first_month, 'January')
+    labels = quarter_labels.get(year_end, quarter_labels['March'])
+    
+    return labels.get(quarter_start, 'Q1')
+
+
 def get_client_data(client_code):
     """Fetch client info from dot-remote-api"""
     try:
@@ -42,7 +117,8 @@ def get_client_data(client_code):
                         'code': client_code,
                         'monthlyCommitted': c.get('committed', 10000),
                         'rolloverCredit': c.get('rollover', 0) or 0,
-                        'rolloverQuarter': get_previous_quarter(current_q),  # Previous quarter
+                        'rolloverQuarter': get_previous_quarter(current_q),  # Quarter it came FROM
+                        'rolloverUseIn': c.get('rolloverUseIn', ''),  # Quarter label to USE it in
                         'currentQuarter': current_q,
                         'yearEnd': c.get('yearEnd', 'March')
                     }
@@ -156,7 +232,11 @@ def build_project_row(project, truncate=False):
 def build_html(client, tracker_data, month, is_quarter=False):
     """Build the complete HTML document"""
     
-    # If quarterly view, aggregate the data
+    # Determine quarter info
+    quarter_months = get_quarter_months(month)
+    display_quarter_label = get_quarter_label_for_months(quarter_months, client['yearEnd'])
+    
+    # If quarterly view, add month prefix to descriptions
     if is_quarter:
         tracker_data = aggregate_quarterly_data(tracker_data)
     
@@ -172,11 +252,31 @@ def build_html(client, tracker_data, month, is_quarter=False):
     projects_total = sum(p['spend'] or 0 for p in projects)
     grand_total = projects_total  # Other Stuff doesn't count against committed
     
-    # Get client numbers
-    committed = client['monthlyCommitted']
-    rollover = client['rolloverCredit']
-    rollover_quarter = client['rolloverQuarter']
-    available = committed + rollover
+    # Get client numbers - multiply by 3 for quarterly
+    if is_quarter:
+        committed = client['monthlyCommitted'] * 3
+    else:
+        committed = client['monthlyCommitted']
+    
+    # Rollover only applies if rolloverUseIn matches the quarter we're showing
+    rollover_use_in = client.get('rolloverUseIn', '')
+    rollover_quarter = client['rolloverQuarter']  # Quarter it came FROM
+    
+    # Check if rollover applies to this report
+    if is_quarter:
+        # For quarterly, check if rolloverUseIn matches the quarter label
+        rollover_applies = (rollover_use_in == display_quarter_label)
+    else:
+        # For monthly, check if the month is in the rollover quarter
+        rollover_applies = (rollover_use_in == display_quarter_label)
+    
+    if rollover_applies:
+        rollover = client['rolloverCredit']
+    else:
+        rollover = 0
+    
+    # Available is just committed (rollover shown separately, not added)
+    available = committed
     remaining = available - grand_total
     spend_percent = min(100, round((grand_total / available) * 100)) if available > 0 else 0
     
@@ -197,7 +297,7 @@ def build_html(client, tracker_data, month, is_quarter=False):
     # Format dates
     today = datetime.now()
     report_date = today.strftime('%d %b')
-    quarter_label = client['currentQuarter']
+    quarter_label = display_quarter_label  # Use the calculated quarter label
     
     # Build page 1 project rows
     page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
@@ -899,9 +999,11 @@ def generate_pdf():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    # For quarterly view, get all data (don't filter by month)
+    # For quarterly view, get all data then filter by quarter months
     if is_quarter:
         tracker_data = get_tracker_data(client_code, None)
+        quarter_months = get_quarter_months(month)
+        tracker_data = [r for r in tracker_data if r.get('month') in quarter_months]
     else:
         tracker_data = get_tracker_data(client_code, month)
     
@@ -937,9 +1039,11 @@ def generate_html():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    # For quarterly view, get all data (don't filter by month)
+    # For quarterly view, get all data then filter by quarter months
     if is_quarter:
         tracker_data = get_tracker_data(client_code, None)
+        quarter_months = get_quarter_months(month)
+        tracker_data = [r for r in tracker_data if r.get('month') in quarter_months]
     else:
         tracker_data = get_tracker_data(client_code, month)
     

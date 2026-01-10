@@ -323,6 +323,10 @@ body {
     border-radius: 2px 2px 0 0;
 }
 
+.bar-committed.future {
+    opacity: 0.5;
+}
+
 .bar-spend {
     position: absolute;
     bottom: 0;

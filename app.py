@@ -1289,8 +1289,8 @@ def generate_pdf():
     except Exception as e:
         return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
     
-    # Build filename
-    client_name = client['name']
+    # Build filename (sanitize for HTTP headers)
+    client_name = client['name'].replace('–', '-').replace('—', '-')  # Replace em/en dashes with hyphens
     if is_quarter:
         quarter_label = get_quarter_label_for_months(quarter_months, client['yearEnd'])
         filename = f"Hunch {quarter_label} Tracker - {client_name}.pdf"

@@ -896,10 +896,17 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         extra_budget_total = sum(r.get('spend', 0) for r in extra_budget_items)
         extra_budget_note = f'<li><strong>Extra projects</strong> – Plus {format_currency(extra_budget_total)} extra projects outside of committed spend.</li>'
     
+    # Filter out 000/001 admin jobs for display (they're still in totals)
+    real_projects = [p for p in projects if not p['jobNumber'].split(' ')[1] in ('000', '001')]
+    admin_projects = [p for p in projects if p['jobNumber'].split(' ')[1] in ('000', '001')]
+    
     max_page1_projects = 4 if has_other_stuff else 7
-    page1_projects = projects[:max_page1_projects]
-    page2_projects = projects[max_page1_projects:]
+    page1_projects = real_projects[:max_page1_projects]
+    page2_projects = real_projects[max_page1_projects:]
     needs_page2 = len(page2_projects) > 0
+    
+    # Check if we have real projects or just admin jobs
+    has_real_projects = len(real_projects) > 0
     
     # Build chart data - same as quarterly (prev quarter + current quarter)
     quarter_months = get_quarter_months(month)
@@ -971,7 +978,10 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     committed_line_bottom = committed_pct
     
     # Build page 1 project rows
-    page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
+    if has_real_projects:
+        page1_rows = ''.join(build_project_row(p, truncate=True) for p in page1_projects)
+    else:
+        page1_rows = '<tr><td colspan="4" style="text-align: center; color: #999; padding: 20px;">No specific projects this month</td></tr>'
     
     # Build On Us rows (only on_us_items, not extra_budget)
     other_rows = ''.join(build_project_row(p, truncate=True) for p in on_us_items)
@@ -1004,7 +1014,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     # Build page 2 if needed
     page2_html = ''
     if needs_page2:
-        page2_project_rows = ''.join(build_project_row(p, truncate=False) for p in projects)
+        page2_project_rows = ''.join(build_project_row(p, truncate=False) for p in real_projects)
         page2_other_rows = ''.join(build_project_row(p, truncate=False) for p in on_us_items)
         
         page2_other_html = ''

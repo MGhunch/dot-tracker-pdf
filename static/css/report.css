@@ -19,11 +19,13 @@ body {
 .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 20mm 20mm 15mm 20mm;
+    padding: 20mm;
     margin: 0 auto;
     background: white;
     position: relative;
     page-break-after: always;
+    display: flex;
+    flex-direction: column;
 }
 
 .page:last-child { page-break-after: auto; }
@@ -181,7 +183,7 @@ body {
 
 .projects-table td {
     padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid #e5e5e5;
     color: #666;
     vertical-align: top;
 }
@@ -220,7 +222,7 @@ body {
 
 .summary-table td {
     padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid #e5e5e5;
     color: #666;
 }
 
@@ -247,7 +249,7 @@ body {
     letter-spacing: 1px;
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid #e5e5e5;
 }
 
 /* Two Column Layout */
@@ -407,10 +409,7 @@ body {
 
 /* Footer */
 .footer {
-    position: absolute;
-    bottom: 15mm;
-    left: 20mm;
-    right: 20mm;
+    margin-top: auto;
     display: flex;
     justify-content: space-between;
     align-items: center;

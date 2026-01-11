@@ -6,15 +6,27 @@ from datetime import datetime
 import subprocess
 import tempfile
 
+# Import embedded images
+from image_data import HEADER_LOGO, AI2_LOGO, CLIENT_LOGOS
+
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
 # Use dot-remote-api for data (it handles all the Airtable lookups)
 API_BASE = 'https://dot-remote-api.up.railway.app'
 
-# Get the base URL for this service (for static files)
-SERVICE_URL = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'dot-tracker-pdf.up.railway.app')
-IMAGE_BASE = f'https://{SERVICE_URL}/static/images'
+def get_header_logo_src():
+    """Get base64 data URI for header logo"""
+    return f"data:image/webp;base64,{HEADER_LOGO}"
+
+def get_ai2_logo_src():
+    """Get base64 data URI for ai2 logo"""
+    return f"data:image/webp;base64,{AI2_LOGO}"
+
+def get_client_logo_src(client_code):
+    """Get base64 data URI for client logo"""
+    logo = CLIENT_LOGOS.get(client_code, CLIENT_LOGOS.get('HUN'))
+    return f"data:image/webp;base64,{logo}"
 
 # Historical spend data for Jul-Sep (system only has data from Oct onwards)
 HISTORICAL_SPEND = {
@@ -722,10 +734,10 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     <div class="page">
         <header class="header">
             <div class="header-left">
-                <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
+                <img src="{get_header_logo_src()}" alt="Tracker" class="header-logo">
             </div>
             <div class="header-right">
-                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}" class="client-logo">
             </div>
         </header>
         
@@ -808,7 +820,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         <footer class="footer">
             <div class="footer-left">
-                <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
+                <img src="{get_ai2_logo_src()}" alt="ai²" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
             <div class="footer-date">
@@ -827,10 +839,10 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     <div class="page">
         <header class="header">
             <div class="header-left">
-                <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
+                <img src="{get_header_logo_src()}" alt="Tracker" class="header-logo">
             </div>
             <div class="header-right">
-                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}" class="client-logo">
             </div>
         </header>
         
@@ -842,7 +854,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         <footer class="footer">
             <div class="footer-left">
-                <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
+                <img src="{get_ai2_logo_src()}" alt="ai²" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
             <div class="footer-date">
@@ -1018,10 +1030,10 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     <div class="page page-continuation">
         <header class="header">
             <div class="header-left">
-                <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
+                <img src="{get_header_logo_src()}" alt="Tracker" class="header-logo">
             </div>
             <div class="header-right">
-                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}" class="client-logo">
             </div>
         </header>
         
@@ -1053,7 +1065,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         
         <footer class="footer">
             <div class="footer-left">
-                <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
+                <img src="{get_ai2_logo_src()}" alt="ai²" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
             <div class="footer-date">
@@ -1090,10 +1102,10 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     <div class="page">
         <header class="header">
             <div class="header-left">
-                <img src="{IMAGE_BASE}/tracker-header.png" alt="Tracker" class="header-logo">
+                <img src="{get_header_logo_src()}" alt="Tracker" class="header-logo">
             </div>
             <div class="header-right">
-                <img src="{IMAGE_BASE}/{client['code']}.png" alt="{client['name']}" class="client-logo">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}" class="client-logo">
             </div>
         </header>
         
@@ -1176,7 +1188,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         
         <footer class="footer">
             <div class="footer-left">
-                <img src="{IMAGE_BASE}/dot-ai2-logo.png" alt="ai²" class="footer-logo">
+                <img src="{get_ai2_logo_src()}" alt="ai²" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition × artificial intelligence</div>
             <div class="footer-date">

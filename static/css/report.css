@@ -163,7 +163,7 @@ body {
 .projects-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .projects-table th {
@@ -204,7 +204,7 @@ body {
 .summary-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .summary-table th {
@@ -390,7 +390,7 @@ body {
 .notes-list { list-style: none; }
 
 .notes-list li {
-    font-size: 11px;
+    font-size: 10px;
     color: #666;
     padding: 6px 0 6px 14px;
     position: relative;

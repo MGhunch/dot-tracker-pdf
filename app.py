@@ -671,7 +671,9 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                 <tbody>
                     {rows}
                     <tr class="subtotal-row">
-                        <td colspan="3"><strong>{m} Total</strong></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
                         <td class="amount"><strong>{format_currency_full(month_total)}</strong></td>
                     </tr>
                 </tbody>
@@ -1287,8 +1289,14 @@ def generate_pdf():
     except Exception as e:
         return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
     
-    # Return PDF
-    filename = f"Tracker-{client_code}-{month}.pdf"
+    # Build filename
+    client_name = client['name']
+    if is_quarter:
+        quarter_label = get_quarter_label_for_months(quarter_months, client['yearEnd'])
+        filename = f"Hunch {quarter_label} Tracker - {client_name}.pdf"
+    else:
+        month_abbrev = month[:3]
+        filename = f"Hunch {month_abbrev} Tracker - {client_name}.pdf"
     
     return Response(
         pdf_bytes,

@@ -19,13 +19,11 @@ body {
 .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 20mm;
+    padding: 20mm 20mm 25mm 20mm;
     margin: 0 auto;
     background: white;
     position: relative;
     page-break-after: always;
-    display: flex;
-    flex-direction: column;
 }
 
 .page:last-child { page-break-after: auto; }
@@ -409,12 +407,15 @@ body {
 
 /* Footer */
 .footer {
-    margin-top: auto;
+    position: fixed;
+    bottom: 15mm;
+    left: 20mm;
+    right: 20mm;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding-top: 12px;
-    border-top: 1px solid #e5e5e5;
+    border-top: 2px solid #ED1C24;
 }
 
 .footer-left { display: flex; align-items: center; }
@@ -432,6 +433,7 @@ body {
     display: flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
 }
 
 /* Print Styles */

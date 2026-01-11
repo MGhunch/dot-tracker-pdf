@@ -19,7 +19,7 @@ body {
 .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 20mm 20mm 25mm 20mm;
+    padding: 20mm 20mm 35mm 20mm;
     margin: 0 auto;
     background: white;
     position: relative;
@@ -56,9 +56,13 @@ body {
     font-size: 28px;
     color: #1a1a1a;
     letter-spacing: 1px;
+    line-height: 1;
 }
 
-.report-meta-block { text-align: right; }
+.report-meta-block { 
+    text-align: right;
+    padding-top: 6px;
+}
 
 .report-meta {
     font-size: 11px;
@@ -157,7 +161,10 @@ body {
 }
 
 /* Projects Section */
-.projects-section { margin-bottom: 20px; }
+.projects-section { 
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+}
 
 /* Projects Table */
 .projects-table {
@@ -174,6 +181,9 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 8px 0;
+}
+
+.projects-table thead {
     border-bottom: 2px solid #e5e5e5;
 }
 
@@ -181,19 +191,23 @@ body {
 
 .projects-table td {
     padding: 10px 0;
-    border-bottom: 1px solid #e5e5e5;
     color: #666;
     vertical-align: top;
 }
 
-.projects-table td.description {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
+.projects-table tbody tr {
+    border-bottom: 1px solid #e5e5e5;
 }
 
-.projects-table tr:last-child td { border-bottom: none; }
+.projects-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.projects-table td.description {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 .project-name { font-weight: 600; color: #333; }
 .amount { text-align: right; font-weight: 600; color: #333; }
@@ -215,13 +229,19 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 8px 0;
+}
+
+.summary-table thead {
     border-bottom: 2px solid #e5e5e5;
 }
 
 .summary-table td {
     padding: 10px 0;
-    border-bottom: 1px solid #e5e5e5;
     color: #666;
+}
+
+.summary-table tbody tr {
+    border-bottom: 1px solid #e5e5e5;
 }
 
 .total-row td {

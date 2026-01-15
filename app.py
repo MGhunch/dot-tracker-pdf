@@ -897,8 +897,8 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
         extra_budget_total = sum(r.get('spend', 0) for r in extra_budget_items)
         extra_budget_note = f'<li><strong>Extra projects</strong> – Plus {format_currency(extra_budget_total)} extra projects outside of committed spend.</li>'
     
-    # Filter out 000/001 admin jobs for display (they're still in totals)
-    real_projects = [p for p in projects if not p['jobNumber'].split(' ')[1] in ('000', '001')]
+    # Show all projects including 000/001 admin jobs
+    real_projects = projects
     admin_projects = [p for p in projects if p['jobNumber'].split(' ')[1] in ('000', '001')]
     
     max_page1_projects = 4 if has_other_stuff else 7

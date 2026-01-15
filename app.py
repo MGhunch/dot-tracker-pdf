@@ -434,16 +434,18 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
     # Rollover box and note - only show if rollover > 0
     rollover_box_html = ''
     rollover_note_html = ''
+    rollover_line_html = ''
     if rollover > 0:
-        rollover_box_html = f'''
-                <div class="stat-box rollover-box">
-                    <div class="stat-value grey">+{format_currency(rollover)}</div>
-                    <div class="stat-label">{rollover_quarter} Rollover</div>
-                </div>'''
+        # Subtle line under stats instead of 4th box
+        rollover_line_html = f'''
+            <div class="rollover-credit">
+                <div class="rollover-label">ROLLOVER</div>
+                <div class="rollover-amount">+{format_currency(rollover)} credit from {rollover_quarter}</div>
+            </div>'''
         rollover_note_html = '<li><strong>Rollover</strong> – You can use your rollover credit any time during the quarter. It\'s extra on top of committed spend.</li>'
     
-    # Grid columns - 3 if no rollover, 4 if rollover
-    grid_columns = 'repeat(4, 1fr)' if rollover > 0 else 'repeat(3, 1fr)'
+    # Grid columns - always 3 now (rollover is separate line)
+    grid_columns = 'repeat(3, 1fr)'
     
     # Build quarterly or monthly specific content
     if is_quarter:
@@ -451,7 +453,7 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
             client, tracker_data, projects, other_stuff, quarter_months,
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
-            rollover_box_html, rollover_note_html, grid_columns,
+            rollover_line_html, rollover_note_html, grid_columns,
             quarter_label, quarter_range, report_date_short, today, display_quarter_label
         )
     else:
@@ -459,7 +461,7 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
             client, chart_data, projects, other_stuff, month,
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
-            rollover_box_html, rollover_note_html, grid_columns,
+            rollover_line_html, rollover_note_html, grid_columns,
             quarter_label, report_date_short, today
         )
 
@@ -467,7 +469,7 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
 def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_months,
                          committed, grand_total, remaining, rollover, rollover_quarter,
                          spend_percent, is_overspent, remaining_class, progress_class,
-                         rollover_box_html, rollover_note_html, grid_columns,
+                         rollover_line_html, rollover_note_html, grid_columns,
                          quarter_label, quarter_range, report_date, today, display_quarter_label):
     """Build HTML for quarterly report (2 pages: summary + detail)"""
     
@@ -762,11 +764,11 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                 <div class="stat-box">
                     <div class="stat-value {remaining_class}">{"+" if remaining < 0 else ""}{format_currency(abs(remaining))}</div>
                     <div class="stat-label">{'Over' if remaining < 0 else 'To Spend'}</div>
-                </div>{rollover_box_html}
+                </div>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>
-            </div>
+            </div>{rollover_line_html}
         </div>
         
         <div class="projects-section">
@@ -878,7 +880,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
 def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                        committed, grand_total, remaining, rollover, rollover_quarter,
                        spend_percent, is_overspent, remaining_class, progress_class,
-                       rollover_box_html, rollover_note_html, grid_columns,
+                       rollover_line_html, rollover_note_html, grid_columns,
                        quarter_label, report_date, today):
     """Build HTML for monthly report (original single-page layout)"""
     
@@ -1140,11 +1142,11 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                 <div class="stat-box">
                     <div class="stat-value {remaining_class}">{format_currency(abs(remaining))}</div>
                     <div class="stat-label">{'Over' if remaining < 0 else 'To Spend'}</div>
-                </div>{rollover_box_html}
+                </div>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>
-            </div>
+            </div>{rollover_line_html}
         </div>
         
         <div class="projects-section">

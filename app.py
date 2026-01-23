@@ -13,7 +13,7 @@ app = Flask(__name__, static_folder='static')
 CORS(app)
 
 # Use dot-hub for data (single source of truth)
-API_BASE = 'https://dot-hub.up.railway.app/api'
+API_BASE = 'https://dot.hunch.co.nz/api'
 
 def get_header_logo_src():
     """Get base64 data URI for header logo"""

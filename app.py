@@ -640,9 +640,6 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     # Build monthly detail sections for back page(s) with pagination
     monthly_detail = build_monthly_detail_sections(tracker_data, quarter_months)
     
-    # Build "Projects On Us" section if needed
-    on_us_items = [r for r in tracker_data if r.get('spendType') == 'Project on us']
-    
     # Pagination: max 12 rows per page
     MAX_ROWS_PER_PAGE = 12
     
@@ -689,40 +686,6 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                         <td></td>
                         <td class="amount"><strong>{format_currency_full(month_total)}</strong></td>
                     </tr>
-                </tbody>
-            </table>
-        </div>'''
-        
-        sections_to_place.append((section_html, row_count))
-    
-    # Add Projects On Us section if present
-    if on_us_items:
-        row_count = len(on_us_items) + 1  # +1 for header
-        other_rows = ''
-        for p in on_us_items:
-            display_amount = format_currency_full(p.get('spend', 0))
-            other_rows += f'''
-                <tr>
-                    <td class="project-name">{p['jobNumber']} · {p['projectName']}</td>
-                    <td>{p.get('owner', '')}</td>
-                    <td class="description">{p.get('description', '')}</td>
-                    <td class="amount">{display_amount}</td>
-                </tr>'''
-        
-        section_html = f'''
-        <div class="projects-section">
-            <div class="section-title">Projects On Us</div>
-            <table class="projects-table">
-                <thead>
-                    <tr>
-                        <th style="width: 30%;">Project</th>
-                        <th style="width: 18%;">Owner</th>
-                        <th>Description</th>
-                        <th style="width: 70px;">Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {other_rows}
                 </tbody>
             </table>
         </div>'''
@@ -1088,34 +1051,80 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     # More projects indicator
     more_projects_html = '<div class="more-projects">Full list over the page →</div>' if needs_page2 else ''
     
-    # Build page 2 if needed
+    # Build page 2+ with pagination if needed
     page2_html = ''
     if needs_page2:
-        page2_project_rows = ''.join(build_project_row(p, truncate=False) for p in real_projects)
-        page2_other_rows = ''.join(build_project_row(p, truncate=False) for p in on_us_items)
+        # Pagination: max 12 rows per page
+        MAX_ROWS_PER_PAGE = 12
         
-        page2_other_html = ''
+        # Build sections to place
+        sections_to_place = []  # List of (html, row_count) tuples
+        
+        # "The Work" section - all projects for this month
+        work_row_count = len(real_projects) + 1  # +1 for header
+        work_rows = ''.join(build_project_row(p, truncate=False) for p in real_projects)
+        work_section = f'''
+        <div class="projects-section">
+            <div class="section-title">The Work</div>
+            <table class="projects-table">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;">Project</th>
+                        <th style="width: 20%;">Owner</th>
+                        <th>Description</th>
+                        <th style="width: 70px;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {work_rows}
+                </tbody>
+            </table>
+        </div>'''
+        sections_to_place.append((work_section, work_row_count))
+        
+        # "Projects On Us" section if present
         if has_other_stuff:
-            page2_other_html = f'''
-            <div class="projects-section">
-                <div class="section-title">Projects On Us</div>
-                <table class="projects-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 35%;">Project</th>
-                            <th style="width: 20%;">Owner</th>
-                            <th>Description</th>
-                            <th style="width: 70px;">Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {page2_other_rows}
-                    </tbody>
-                </table>
-            </div>
-            '''
+            other_row_count = len(on_us_items) + 1  # +1 for header
+            other_rows = ''.join(build_project_row(p, truncate=False) for p in on_us_items)
+            other_section = f'''
+        <div class="projects-section">
+            <div class="section-title">Projects On Us</div>
+            <table class="projects-table">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;">Project</th>
+                        <th style="width: 20%;">Owner</th>
+                        <th>Description</th>
+                        <th style="width: 70px;">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {other_rows}
+                </tbody>
+            </table>
+        </div>'''
+            sections_to_place.append((other_section, other_row_count))
         
-        page2_html = f'''
+        # Distribute sections across pages
+        detail_pages = []
+        current_page_content = ''
+        current_page_rows = 0
+        
+        for section_html, row_count in sections_to_place:
+            if current_page_rows + row_count > MAX_ROWS_PER_PAGE and current_page_rows > 0:
+                detail_pages.append(current_page_content)
+                current_page_content = ''
+                current_page_rows = 0
+            
+            current_page_content += section_html
+            current_page_rows += row_count
+        
+        if current_page_content:
+            detail_pages.append(current_page_content)
+        
+        # Build all detail pages
+        for page_content in detail_pages:
+            page2_html += f'''
     <div class="page page-continuation">
         <header class="header">
             <div class="header-left">
@@ -1133,24 +1142,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
             </div>
         </div>
         
-        <div class="projects-section">
-            <div class="section-title">The Work</div>
-            <table class="projects-table">
-                <thead>
-                    <tr>
-                        <th style="width: 35%;">Project</th>
-                        <th style="width: 20%;">Owner</th>
-                        <th>Description</th>
-                        <th style="width: 70px;">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {page2_project_rows}
-                </tbody>
-            </table>
-        </div>
-        
-        {page2_other_html}
+        {page_content}
         
         <footer class="footer">
             <div class="footer-left">
@@ -1167,8 +1159,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                 {report_date}
             </div>
         </footer>
-    </div>
-        '''
+    </div>'''
 
     # Build the head section with CSS (can't use f-string because CSS has curly braces)
     html_head = '''<!DOCTYPE html>

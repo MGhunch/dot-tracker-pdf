@@ -361,11 +361,14 @@ def build_monthly_detail_sections(tracker_data, quarter_months):
     return by_month
 
 
-def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=None):
+def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=None, prev_quarter_data=None):
     """Build the complete HTML document"""
     
     # For chart, use all_quarter_data if provided, otherwise use tracker_data
     chart_data = all_quarter_data if all_quarter_data else tracker_data
+    
+    # Previous quarter data for chart (empty list if not provided)
+    prev_chart_data = prev_quarter_data if prev_quarter_data else []
     
     # Determine quarter info
     quarter_months = get_quarter_months(month)
@@ -503,19 +506,17 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     # Get previous quarter months and their spend
     prev_quarter_months = get_previous_quarter_months(quarter_months)
     
-    # Calculate spend for previous quarter months - use historical data if needed
-    def get_month_spend(month, use_historical=False):
-        if use_historical and client['code'] in HISTORICAL_SPEND:
-            return HISTORICAL_SPEND[client['code']].get(month, 0)
-        return sum(d.get('spend', 0) for d in tracker_data 
+    # Calculate spend for previous quarter months from prev_chart_data
+    def get_prev_month_spend(month):
+        return sum(d.get('spend', 0) for d in prev_chart_data 
                    if d.get('month') == month and d.get('spendType') == 'Project budget')
     
     # Build chart bars - previous quarter first, then current quarter
     chart_bars_html = ''
     
-    # Previous quarter bars (use historical data)
+    # Previous quarter bars
     for m in prev_quarter_months:
-        month_spend = get_month_spend(m, use_historical=True)
+        month_spend = get_prev_month_spend(m)
         month_abbrev = m[:3]
         # Spend as % of chart max (so it scales correctly against grey bar)
         spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
@@ -524,7 +525,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="bar-group">
                 <div class="bar-stack" >
                     <div class="bar-committed" style="height: {committed_pct}%;"></div>
-                    <div class="bar-spend" style="height: {spend_pct}%;"></div>
+                    <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
                 </div>
                 <span class="bar-label">{month_abbrev}</span>
             </div>'''
@@ -546,7 +547,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="bar-group">
                 <div class="bar-stack" >
                     <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
-                    <div class="bar-spend" style="height: {spend_pct}%;"></div>
+                    <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
                 </div>
                 <span class="bar-label">{month_abbrev}</span>
             </div>'''
@@ -804,9 +805,9 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                     </div>
                 </div>
                 <div class="chart-legend">
-                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Projects</span></div>
-                    <div class="legend-item"><div class="legend-swatch committed-swatch"></div><span>Committed</span></div>
-                    <div class="legend-item"><div class="legend-swatch ballpark"></div><span>Ballpark</span></div>
+                    <div class="legend-item"><div class="legend-swatch spend" style="background: #ED1C24;"></div><span>Projects</span></div>
+                    <div class="legend-item"><div class="legend-swatch committed-swatch" style="background: #e0e0e0;"></div><span>Committed</span></div>
+                    <div class="legend-item"><div class="legend-swatch ballpark" style="background: #ED1C24; opacity: 0.4;"></div><span>Ballpark</span></div>
                 </div>
             </div>
             
@@ -927,19 +928,21 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     # Get previous quarter months
     prev_quarter_months = get_previous_quarter_months(quarter_months)
     
-    # Calculate spend for a month - use historical data for previous quarter
-    def get_month_spend(m, use_historical=False):
-        if use_historical and client['code'] in HISTORICAL_SPEND:
-            return HISTORICAL_SPEND[client['code']].get(m, 0)
+    # Calculate spend for a month from prev_chart_data
+    def get_prev_month_spend(m):
+        return sum(d.get('spend', 0) for d in prev_chart_data 
+                   if d.get('month') == m and d.get('spendType') == 'Project budget')
+    
+    def get_current_month_spend(m):
         return sum(d.get('spend', 0) for d in tracker_data 
                    if d.get('month') == m and d.get('spendType') == 'Project budget')
     
     # Build chart bars - previous quarter first, then current quarter
     chart_bars_html = ''
     
-    # Previous quarter bars (use historical data)
+    # Previous quarter bars
     for m in prev_quarter_months:
-        month_spend = get_month_spend(m, use_historical=True)
+        month_spend = get_prev_month_spend(m)
         month_abbrev = m[:3]
         spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
@@ -947,7 +950,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                         <div class="bar-group">
                             <div class="bar-stack" >
                                 <div class="bar-committed" style="height: {committed_pct}%;"></div>
-                                <div class="bar-spend" style="height: {spend_pct}%;"></div>
+                                <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
                             </div>
                             <span class="bar-label">{month_abbrev}</span>
                         </div>'''
@@ -958,7 +961,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                    'July', 'August', 'September', 'October', 'November', 'December']
     
     for m in quarter_months:
-        month_spend = get_month_spend(m)
+        month_spend = get_current_month_spend(m)
         month_abbrev = m[:3]
         spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
         
@@ -970,7 +973,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                         <div class="bar-group">
                             <div class="bar-stack" >
                                 <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
-                                <div class="bar-spend" style="height: {spend_pct}%;"></div>
+                                <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
                             </div>
                             <span class="bar-label">{month_abbrev}</span>
                         </div>'''
@@ -1182,9 +1185,9 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                     </div>
                 </div>
                 <div class="chart-legend">
-                    <div class="legend-item"><div class="legend-swatch spend"></div><span>Projects</span></div>
-                    <div class="legend-item"><div class="legend-swatch committed"></div><span>Committed</span></div>
-                    <div class="legend-item"><div class="legend-swatch ballpark"></div><span>Ballpark</span></div>
+                    <div class="legend-item"><div class="legend-swatch spend" style="background: #ED1C24;"></div><span>Projects</span></div>
+                    <div class="legend-item"><div class="legend-swatch committed" style="background: #e0e0e0;"></div><span>Committed</span></div>
+                    <div class="legend-item"><div class="legend-swatch ballpark" style="background: #ED1C24; opacity: 0.4;"></div><span>Ballpark</span></div>
                 </div>
             </div>
             
@@ -1280,10 +1283,16 @@ def generate_pdf():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    # Always get all quarter data (needed for chart)
-    all_quarter_data = get_tracker_data(client_code, None)
+    # Get ALL tracker data for this client (no month filter)
+    all_tracker_data = get_tracker_data(client_code, None)
+    
+    # Current quarter months
     quarter_months = get_quarter_months(month)
-    all_quarter_data = [r for r in all_quarter_data if r.get('month') in quarter_months]
+    all_quarter_data = [r for r in all_tracker_data if r.get('month') in quarter_months]
+    
+    # Previous quarter months and data (for chart)
+    prev_quarter_months = get_previous_quarter_months(quarter_months)
+    prev_quarter_data = [r for r in all_tracker_data if r.get('month') in prev_quarter_months]
     
     # For monthly view, also filter to just the selected month for tables
     if is_quarter:
@@ -1291,8 +1300,8 @@ def generate_pdf():
     else:
         tracker_data = [r for r in all_quarter_data if r.get('month') == month]
     
-    # Build HTML (pass all_quarter_data for chart)
-    html = build_html(client, tracker_data, month, is_quarter, all_quarter_data)
+    # Build HTML (pass all_quarter_data and prev_quarter_data for chart)
+    html = build_html(client, tracker_data, month, is_quarter, all_quarter_data, prev_quarter_data)
     
     # Convert to PDF
     try:
@@ -1329,10 +1338,16 @@ def generate_html():
     if not client:
         return jsonify({'error': f'Client {client_code} not found'}), 404
     
-    # Always get all quarter data (needed for chart)
-    all_quarter_data = get_tracker_data(client_code, None)
+    # Get ALL tracker data for this client (no month filter)
+    all_tracker_data = get_tracker_data(client_code, None)
+    
+    # Current quarter months
     quarter_months = get_quarter_months(month)
-    all_quarter_data = [r for r in all_quarter_data if r.get('month') in quarter_months]
+    all_quarter_data = [r for r in all_tracker_data if r.get('month') in quarter_months]
+    
+    # Previous quarter months and data (for chart)
+    prev_quarter_months = get_previous_quarter_months(quarter_months)
+    prev_quarter_data = [r for r in all_tracker_data if r.get('month') in prev_quarter_months]
     
     # For monthly view, also filter to just the selected month for tables
     if is_quarter:
@@ -1340,7 +1355,7 @@ def generate_html():
     else:
         tracker_data = [r for r in all_quarter_data if r.get('month') == month]
     
-    html = build_html(client, tracker_data, month, is_quarter, all_quarter_data)
+    html = build_html(client, tracker_data, month, is_quarter, all_quarter_data, prev_quarter_data)
     
     return Response(html, mimetype='text/html')
 

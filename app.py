@@ -637,16 +637,25 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             </table>
         </div>'''
     
-    # Build monthly detail sections for back page
+    # Build monthly detail sections for back page(s) with pagination
     monthly_detail = build_monthly_detail_sections(tracker_data, quarter_months)
     
-    detail_sections = ''
+    # Build "Projects On Us" section if needed
+    on_us_items = [r for r in tracker_data if r.get('spendType') == 'Project on us']
+    
+    # Pagination: max 12 rows per page
+    MAX_ROWS_PER_PAGE = 12
+    
+    # Build sections with row counts
+    sections_to_place = []  # List of (html, row_count) tuples
+    
     for m in quarter_months:
         month_projects = monthly_detail[m]
         if not month_projects:
             continue
         
         month_total = sum(p.get('spend', 0) or 0 for p in month_projects)
+        row_count = len(month_projects) + 2  # +2 for header and subtotal
         
         rows = ''
         for p in month_projects:
@@ -660,7 +669,7 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                     <td class="amount{ballpark_class}">{amount}</td>
                 </tr>'''
         
-        detail_sections += f'''
+        section_html = f'''
         <div class="projects-section">
             <div class="section-title">{m}</div>
             <table class="projects-table">
@@ -683,40 +692,67 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                 </tbody>
             </table>
         </div>'''
+        
+        sections_to_place.append((section_html, row_count))
     
-    # Build Projects On Us detail for back page (only on_us items)
-    other_detail_html = ''
-    if has_other_stuff:
-        on_us_items = [r for r in tracker_data if r.get('spendType') == 'Project on us']
-        if on_us_items:
-            other_rows = ''
-            for p in on_us_items:
-                display_amount = format_currency_full(p.get('spend', 0))
-                other_rows += f'''
+    # Add Projects On Us section if present
+    if on_us_items:
+        row_count = len(on_us_items) + 1  # +1 for header
+        other_rows = ''
+        for p in on_us_items:
+            display_amount = format_currency_full(p.get('spend', 0))
+            other_rows += f'''
+                <tr>
+                    <td class="project-name">{p['jobNumber']} · {p['projectName']}</td>
+                    <td>{p.get('owner', '')}</td>
+                    <td class="description">{p.get('description', '')}</td>
+                    <td class="amount">{display_amount}</td>
+                </tr>'''
+        
+        section_html = f'''
+        <div class="projects-section">
+            <div class="section-title">Projects On Us</div>
+            <table class="projects-table">
+                <thead>
                     <tr>
-                        <td class="project-name">{p['jobNumber']} · {p['projectName']}</td>
-                        <td>{p.get('owner', '')}</td>
-                        <td class="description">{p.get('description', '')}</td>
-                        <td class="amount">{display_amount}</td>
-                    </tr>'''
-            
-            other_detail_html = f'''
-            <div class="projects-section">
-                <div class="section-title">Projects On Us</div>
-                <table class="projects-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 30%;">Project</th>
-                            <th style="width: 18%;">Owner</th>
-                            <th>Description</th>
-                            <th style="width: 70px;">Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {other_rows}
-                    </tbody>
-                </table>
-            </div>'''
+                        <th style="width: 30%;">Project</th>
+                        <th style="width: 18%;">Owner</th>
+                        <th>Description</th>
+                        <th style="width: 70px;">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {other_rows}
+                </tbody>
+            </table>
+        </div>'''
+        
+        sections_to_place.append((section_html, row_count))
+    
+    # Distribute sections across pages
+    detail_pages = []  # List of page content strings
+    current_page_content = ''
+    current_page_rows = 0
+    
+    for section_html, row_count in sections_to_place:
+        # Would this section fit on current page?
+        if current_page_rows + row_count > MAX_ROWS_PER_PAGE and current_page_rows > 0:
+            # Start new page
+            detail_pages.append(current_page_content)
+            current_page_content = ''
+            current_page_rows = 0
+        
+        current_page_content += section_html
+        current_page_rows += row_count
+    
+    # Don't forget the last page
+    if current_page_content:
+        detail_pages.append(current_page_content)
+    
+    # For backwards compatibility, set these (used in template below)
+    detail_sections = detail_pages[0] if detail_pages else ''
+    other_detail_html = ''  # Now included in sections_to_place
+    extra_detail_pages = detail_pages[1:] if len(detail_pages) > 1 else []
     
     # Build the head section with CSS (can't use f-string because CSS has curly braces)
     html_head = '''<!DOCTYPE html>
@@ -856,8 +892,6 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         {detail_sections}
         
-        {other_detail_html}
-        
         <footer class="footer">
             <div class="footer-left">
                 <img src="{get_ai2_logo_src()}" alt="ai²" class="footer-logo">
@@ -876,6 +910,43 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     </div>
 </body>
 </html>'''
+    
+    # Build extra detail pages if needed
+    extra_pages_html = ''
+    for page_content in extra_detail_pages:
+        extra_pages_html += f'''
+    <div class="page">
+        <header class="header">
+            <div class="header-left">
+                <img src="{get_header_logo_src()}" alt="Tracker" class="header-logo">
+            </div>
+            <div class="header-right">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}" class="client-logo">
+            </div>
+        </header>
+        
+        {page_content}
+        
+        <footer class="footer">
+            <div class="footer-left">
+                <img src="{get_ai2_logo_src()}" alt="ai²" class="footer-logo">
+            </div>
+            <div class="footer-tagline">agency intuition × artificial intelligence</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
+        </footer>
+    </div>'''
+    
+    # Insert extra pages before closing body tag
+    if extra_pages_html:
+        html_body = html_body.replace('</body>', extra_pages_html + '</body>')
     
     return html_head + html_body
 

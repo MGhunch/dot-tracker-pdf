@@ -457,7 +457,8 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
             rollover_line_html, rollover_note_html, grid_columns,
-            quarter_label, quarter_range, report_date_short, today, display_quarter_label
+            quarter_label, quarter_range, report_date_short, today, display_quarter_label,
+            prev_chart_data
         )
     else:
         return build_monthly_html(
@@ -465,7 +466,7 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
             committed, grand_total, remaining, rollover, rollover_quarter,
             spend_percent, is_overspent, remaining_class, progress_class,
             rollover_line_html, rollover_note_html, grid_columns,
-            quarter_label, report_date_short, today
+            quarter_label, report_date_short, today, prev_chart_data
         )
 
 
@@ -473,7 +474,8 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                          committed, grand_total, remaining, rollover, rollover_quarter,
                          spend_percent, is_overspent, remaining_class, progress_class,
                          rollover_line_html, rollover_note_html, grid_columns,
-                         quarter_label, quarter_range, report_date, today, display_quarter_label):
+                         quarter_label, quarter_range, report_date, today, display_quarter_label,
+                         prev_chart_data):
     """Build HTML for quarterly report (2 pages: summary + detail)"""
     
     # Build monthly summary for front page
@@ -882,7 +884,7 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                        committed, grand_total, remaining, rollover, rollover_quarter,
                        spend_percent, is_overspent, remaining_class, progress_class,
                        rollover_line_html, rollover_note_html, grid_columns,
-                       quarter_label, report_date, today):
+                       quarter_label, report_date, today, prev_chart_data):
     """Build HTML for monthly report (original single-page layout)"""
     
     # Separate On Us from Extra Budget in other_stuff

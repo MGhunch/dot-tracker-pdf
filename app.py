@@ -304,6 +304,8 @@ def build_monthly_summary(tracker_data, quarter_months):
             'key_project_count': 0,  # Excludes 000 jobs
             'key_project_spend': 0,  # Spend from non-000 jobs only (for average)
             'total_spend': 0,  # All spend including 000
+            'confirmed_spend': 0,  # Non-ballpark spend
+            'ballpark_spend': 0,  # Ballpark spend
         }
     
     for record in tracker_data:
@@ -312,8 +314,15 @@ def build_monthly_summary(tracker_data, quarter_months):
             if m in summary:
                 spend = record.get('spend', 0) or 0
                 job_number = record.get('jobNumber', '')
+                is_ballpark = record.get('ballpark', False)
                 
                 summary[m]['total_spend'] += spend
+                
+                # Track ballpark vs confirmed
+                if is_ballpark:
+                    summary[m]['ballpark_spend'] += spend
+                else:
+                    summary[m]['confirmed_spend'] += spend
                 
                 # Check if it's a 000 job (retainer)
                 if ' 000' not in job_number:
@@ -510,24 +519,30 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     
     # Calculate spend for previous quarter months from prev_chart_data
     def get_prev_month_spend(month):
-        return sum(d.get('spend', 0) for d in prev_chart_data 
-                   if d.get('month') == month and d.get('spendType') == 'Project budget')
+        confirmed = sum(d.get('spend', 0) for d in prev_chart_data 
+                       if d.get('month') == month and d.get('spendType') == 'Project budget' and not d.get('ballpark', False))
+        ballpark = sum(d.get('spend', 0) for d in prev_chart_data 
+                      if d.get('month') == month and d.get('spendType') == 'Project budget' and d.get('ballpark', False))
+        return confirmed, ballpark
     
     # Build chart bars - previous quarter first, then current quarter
     chart_bars_html = ''
     
     # Previous quarter bars
     for m in prev_quarter_months:
-        month_spend = get_prev_month_spend(m)
+        confirmed_spend, ballpark_spend = get_prev_month_spend(m)
         month_abbrev = m[:3]
         # Spend as % of chart max (so it scales correctly against grey bar)
-        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        confirmed_pct = (confirmed_spend / chart_max) * 100 if confirmed_spend > 0 else 0
+        ballpark_pct = (ballpark_spend / chart_max) * 100 if ballpark_spend > 0 else 0
+        ballpark_bottom = confirmed_pct  # Ballpark bar sits on top of confirmed
         
         chart_bars_html += f'''
             <div class="bar-group">
                 <div class="bar-stack" >
                     <div class="bar-committed" style="height: {committed_pct}%;"></div>
-                    <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
+                    <div class="bar-spend" style="height: {confirmed_pct}%;"></div>
+                    <div class="bar-ballpark" style="height: {ballpark_pct}%; bottom: {ballpark_bottom}%;"></div>
                 </div>
                 <span class="bar-label">{month_abbrev}</span>
             </div>'''
@@ -535,9 +550,12 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
     # Current quarter bars
     current_month = today.strftime('%B')
     for m in quarter_months:
-        month_spend = monthly_summary[m]['total_spend']
+        confirmed_spend = monthly_summary[m]['confirmed_spend']
+        ballpark_spend = monthly_summary[m]['ballpark_spend']
         month_abbrev = m[:3]
-        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        confirmed_pct = (confirmed_spend / chart_max) * 100 if confirmed_spend > 0 else 0
+        ballpark_pct = (ballpark_spend / chart_max) * 100 if ballpark_spend > 0 else 0
+        ballpark_bottom = confirmed_pct  # Ballpark bar sits on top of confirmed
         
         # Check if this month is in the future
         month_order = ['January', 'February', 'March', 'April', 'May', 'June', 
@@ -549,7 +567,8 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
             <div class="bar-group">
                 <div class="bar-stack" >
                     <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
-                    <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
+                    <div class="bar-spend" style="height: {confirmed_pct}%;"></div>
+                    <div class="bar-ballpark" style="height: {ballpark_pct}%; bottom: {ballpark_bottom}%;"></div>
                 </div>
                 <span class="bar-label">{month_abbrev}</span>
             </div>'''
@@ -966,27 +985,36 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
     
     # Calculate spend for a month from prev_chart_data
     def get_prev_month_spend(m):
-        return sum(d.get('spend', 0) for d in prev_chart_data 
-                   if d.get('month') == m and d.get('spendType') == 'Project budget')
+        confirmed = sum(d.get('spend', 0) for d in prev_chart_data 
+                       if d.get('month') == m and d.get('spendType') == 'Project budget' and not d.get('ballpark', False))
+        ballpark = sum(d.get('spend', 0) for d in prev_chart_data 
+                      if d.get('month') == m and d.get('spendType') == 'Project budget' and d.get('ballpark', False))
+        return confirmed, ballpark
     
     def get_current_month_spend(m):
-        return sum(d.get('spend', 0) for d in tracker_data 
-                   if d.get('month') == m and d.get('spendType') == 'Project budget')
+        confirmed = sum(d.get('spend', 0) for d in tracker_data 
+                       if d.get('month') == m and d.get('spendType') == 'Project budget' and not d.get('ballpark', False))
+        ballpark = sum(d.get('spend', 0) for d in tracker_data 
+                      if d.get('month') == m and d.get('spendType') == 'Project budget' and d.get('ballpark', False))
+        return confirmed, ballpark
     
     # Build chart bars - previous quarter first, then current quarter
     chart_bars_html = ''
     
     # Previous quarter bars
     for m in prev_quarter_months:
-        month_spend = get_prev_month_spend(m)
+        confirmed_spend, ballpark_spend = get_prev_month_spend(m)
         month_abbrev = m[:3]
-        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        confirmed_pct = (confirmed_spend / chart_max) * 100 if confirmed_spend > 0 else 0
+        ballpark_pct = (ballpark_spend / chart_max) * 100 if ballpark_spend > 0 else 0
+        ballpark_bottom = confirmed_pct
         
         chart_bars_html += f'''
                         <div class="bar-group">
                             <div class="bar-stack" >
                                 <div class="bar-committed" style="height: {committed_pct}%;"></div>
-                                <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
+                                <div class="bar-spend" style="height: {confirmed_pct}%;"></div>
+                                <div class="bar-ballpark" style="height: {ballpark_pct}%; bottom: {ballpark_bottom}%;"></div>
                             </div>
                             <span class="bar-label">{month_abbrev}</span>
                         </div>'''
@@ -997,9 +1025,11 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                    'July', 'August', 'September', 'October', 'November', 'December']
     
     for m in quarter_months:
-        month_spend = get_current_month_spend(m)
+        confirmed_spend, ballpark_spend = get_current_month_spend(m)
         month_abbrev = m[:3]
-        spend_pct = (month_spend / chart_max) * 100 if month_spend > 0 else 0
+        confirmed_pct = (confirmed_spend / chart_max) * 100 if confirmed_spend > 0 else 0
+        ballpark_pct = (ballpark_spend / chart_max) * 100 if ballpark_spend > 0 else 0
+        ballpark_bottom = confirmed_pct
         
         # Check if this month is in the future
         is_future = month_order.index(m) > month_order.index(current_month)
@@ -1009,7 +1039,8 @@ def build_monthly_html(client, tracker_data, projects, other_stuff, month,
                         <div class="bar-group">
                             <div class="bar-stack" >
                                 <div class="bar-committed{future_class}" style="height: {committed_pct}%;"></div>
-                                <div class="bar-spend" style="height: {spend_pct}%; background: #ED1C24;"></div>
+                                <div class="bar-spend" style="height: {confirmed_pct}%;"></div>
+                                <div class="bar-ballpark" style="height: {ballpark_pct}%; bottom: {ballpark_bottom}%;"></div>
                             </div>
                             <span class="bar-label">{month_abbrev}</span>
                         </div>'''

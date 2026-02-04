@@ -160,6 +160,21 @@ body {
     background: #f59e0b;
 }
 
+/* Rollover Credit Line */
+.rollover-credit {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 9px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.rollover-label { font-weight: 600; }
+.rollover-amount { color: #666; }
+
 /* Projects Section */
 .projects-section { 
     margin-bottom: 20px;

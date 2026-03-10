@@ -19,11 +19,10 @@ body {
 .page {
     width: 210mm;
     height: 297mm;
-    padding: 20mm;
+    padding: 20mm 20mm 35mm 20mm;
     margin: 0 auto;
     background: white;
-    display: flex;
-    flex-direction: column;
+    position: relative;
     page-break-after: always;
 }
 
@@ -449,7 +448,10 @@ body {
 
 /* Footer */
 .footer {
-    margin-top: auto;
+    position: absolute;
+    bottom: 15mm;
+    left: 20mm;
+    right: 20mm;
     display: flex;
     justify-content: space-between;
     align-items: center;

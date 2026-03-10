@@ -448,7 +448,7 @@ body {
 
 /* Footer */
 .footer {
-    position: fixed;
+    position: absolute;
     bottom: 15mm;
     left: 20mm;
     right: 20mm;

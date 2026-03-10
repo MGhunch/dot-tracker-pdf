@@ -18,11 +18,12 @@ body {
 /* Page Layout */
 .page {
     width: 210mm;
-    min-height: 297mm;
-    padding: 20mm 20mm 35mm 20mm;
+    height: 297mm;
+    padding: 20mm;
     margin: 0 auto;
     background: white;
-    position: relative;
+    display: flex;
+    flex-direction: column;
     page-break-after: always;
 }
 
@@ -448,10 +449,7 @@ body {
 
 /* Footer */
 .footer {
-    position: absolute;
-    bottom: 15mm;
-    left: 20mm;
-    right: 20mm;
+    margin-top: auto;
     display: flex;
     justify-content: space-between;
     align-items: center;

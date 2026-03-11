@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dot Hub</title>
+    <meta name="theme-color" content="#ED1C24">
+    <link rel="apple-touch-icon" href="images/favicon.png">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="logged-out">
+    <!-- Toast notifications -->
+    <div class="toast" id="toast"></div>
+
+
+    <!-- ===== PHONE LAYOUT (Mobile <900px) ===== -->
+    <div class="phone-container" id="phone-container">
+        <!-- Phone Header -->
+        <header class="phone-header">
+            <a class="header-logo" id="phone-home-btn">
+                <img src="images/Askdot-header.png" alt="Ask Dot" class="header-logo-img">
+            </a>
+            <button class="hamburger" id="phone-hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <nav class="dropdown" id="phone-dropdown">
+                <div class="dropdown-item" data-view="home">
+                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Home
+                </div>
+                <div class="dropdown-item" data-view="wip">
+                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> WIP
+                </div>
+                <div class="dropdown-item" data-view="tracker">
+                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Tracker
+                </div>
+                <div class="dropdown-item muted" data-action="signout">
+                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Sign out
+                </div>
+            </nav>
+        </header>
+        
+        <div class="overlay" id="phone-overlay"></div>
+        
+        <!-- Phone Login -->
+        <main class="phone-login" id="phone-login">
+            <div class="login-content">
+                <!-- State 1: Email Input -->
+                <div class="login-state" id="phone-login-input">
+                    <div class="login-logo">
+                        <img src="images/Dotandhello.png" alt="Hello from Dot">
+                    </div>
+                    <p class="login-title">What's your email?</p>
+                    <p class="login-subtitle">We'll flick you a link so you can get into it.</p>
+                    <div class="login-form">
+                        <input type="email" class="login-email" id="phone-login-email" placeholder="your@email.com">
+                        <button class="login-btn" id="phone-login-send">Send link</button>
+                    </div>
+                    <p class="login-error" id="phone-login-error"></p>
+                </div>
+                
+                <!-- State 2: Link Sent -->
+                <div class="login-state hidden" id="phone-login-sent">
+                    <div class="login-logo">
+                        <img src="images/Onit.png" alt="On it">
+                    </div>
+                    <p class="login-title">Check your inbox</p>
+                    <p class="login-subtitle">Your magic link is on its way ✨</p>
+                    <p class="login-retry">No dice? Check your spam or <a href="#" id="phone-login-try-again">try again</a></p>
+                </div>
+            </div>
+            <footer class="phone-footer">
+                <img src="images/ai2-logo.png" alt="ai²" class="footer-logo">
+            </footer>
+        </main>
+        
+        <!-- Phone Home (Ask Dot) -->
+        <main class="phone-home" id="phone-home">
+            <div class="hello-container">
+                <img src="images/Dotandhello.png" alt="Hello from Dot" class="hello-img">
+            </div>
+            <div class="home-input-area">
+                <button class="input-plus" id="phone-home-plus">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <div class="plus-menu" id="phone-home-plus-menu">
+                    <div class="plus-menu-item" data-action="new-job">
+                        <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> New Job
+                    </div>
+                    <div class="plus-menu-item" data-action="upload">
+                        <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Upload
+                    </div>
+                    <div class="plus-menu-item" data-action="wip-email">
+                        <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Send WIP
+                    </div>
+                </div>
+                <input type="text" class="home-input" id="phone-home-input" placeholder="How can I help?">
+                <button class="input-send" id="phone-home-send">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="send-icon">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+            <div class="examples">
+                <button class="example-btn" data-question="Find a job">Find a job</button>
+                <button class="example-btn" data-question="Check a client">Check a client</button>
+                <button class="example-btn" data-question="What can Dot do?">What can Dot do?</button>
+            </div>
+            <footer class="phone-footer">
+                <img src="images/ai2-logo.png" alt="ai&#178;" class="footer-logo">
+            </footer>
+        </main>
+        
+        <!-- Phone Conversation -->
+        <div class="phone-conversation" id="phone-conversation">
+            <div class="conversation-area" id="phone-conversation-area"></div>
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <button class="input-plus" id="phone-chat-plus">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                    <div class="plus-menu" id="phone-chat-plus-menu">
+                        <div class="plus-menu-item" data-action="new-job">
+                            <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> New Job
+                        </div>
+                        <div class="plus-menu-item" data-action="upload">
+                            <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Upload
+                        </div>
+                        <div class="plus-menu-item" data-action="wip-email">
+                            <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Send WIP
+                        </div>
+                    </div>
+                    <input type="text" class="chat-input" id="phone-chat-input" placeholder="Ask a follow-up...">
+                    <button class="chat-send" id="phone-chat-send">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="send-icon">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phone WIP View -->
+        <div class="phone-wip" id="phone-wip">
+            <div class="phone-wip-controls">
+                <div class="custom-dropdown" id="phone-wip-client-dropdown">
+                    <button class="custom-dropdown-trigger" id="phone-wip-client-trigger">
+                        <span>All Clients</span>
+                        <svg class="chevron-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="custom-dropdown-menu" id="phone-wip-client-menu">
+                        <div class="custom-dropdown-option selected" data-value="all">All Clients</div>
+                    </div>
+                </div>
+            </div>
+            <div class="phone-wip-content" id="phone-wip-content">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading jobs...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phone Tracker Message -->
+        <div class="phone-desktop-only" id="phone-tracker-message">
+            <img src="images/Robot.png" alt="Dot">
+            <h2>Best on desktop</h2>
+            <p>Tracker is designed for bigger screens.</p>
+            <button class="pill-btn" onclick="navigateTo('home')">Back to Ask Dot</button>
+        </div>
+    </div>
+
+    <!-- ===== DESKTOP LAYOUT (900px+) ===== -->
+    <div class="desktop-container" id="desktop-container">
+        <!-- Desktop Header -->
+        <header class="desktop-header">
+            <div class="header-left">
+                <a class="header-logo" id="desktop-home-btn">
+                    <img src="images/Askdot-header.png" alt="Ask Dot" class="header-logo-img">
+                </a>
+                <nav class="header-nav">
+                    <button class="nav-tab active" data-view="home">Ask Dot</button>
+                    <button class="nav-tab" data-view="wip">WIP</button>
+                    <button class="nav-tab" data-view="tracker">Tracker</button>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="user-dropdown">
+                    <button class="user-dropdown-trigger" id="user-dropdown-trigger">
+                        <span id="user-display-name">User</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="user-dropdown-menu" id="user-dropdown-menu">
+                        <div class="user-dropdown-item" data-action="signout">Sign out</div>
+                    </div>
+                </div>
+                <img src="images/dot-ai2-logo.png" alt="ai&#178;" class="header-ai-logo">
+            </div>
+        </header>
+
+        <!-- Desktop Main Content -->
+        <main class="desktop-main">
+            <!-- ===== LOGIN VIEW ===== -->
+            <section class="view view-login" id="view-login">
+                <div class="login-state" id="desktop-login-input">
+                    <div class="login-logo">
+                        <img src="images/Dotandhello.png" alt="Hello from Dot">
+                    </div>
+                    <p class="login-title">What's your email?</p>
+                    <p class="login-subtitle">We'll flick you a link so you can get into it.</p>
+                    <div class="login-form">
+                        <input type="email" class="login-email" id="login-email" placeholder="your@email.com">
+                        <button class="login-btn" id="login-send">Send link</button>
+                    </div>
+                    <p class="login-error" id="login-error"></p>
+                </div>
+                
+                <div class="login-state hidden" id="desktop-login-sent">
+                    <div class="login-logo">
+                        <img src="images/Onit.png" alt="On it">
+                    </div>
+                    <p class="login-title">Check your inbox</p>
+                    <p class="login-subtitle">Your magic link is on its way ✨</p>
+                    <p class="login-retry">No dice? Check your spam or <a href="#" id="login-try-again">try again</a></p>
+                </div>
+            </section>
+
+            <!-- ===== HOME VIEW (Ask Dot) ===== -->
+            <section class="view view-home active" id="view-home">
+                <!-- Home State -->
+                <div class="home-state" id="desktop-home-state">
+                    <div class="home-left">
+                        <img src="images/Dotandhello.png" alt="Hello from Dot" class="home-hello-img">
+                    </div>
+                    <div class="home-right">
+                        <div class="home-input-area">
+                            <button class="input-plus" id="desktop-home-plus">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                            <div class="plus-menu" id="desktop-home-plus-menu">
+                                <div class="plus-menu-item" data-action="new-job">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> New Job
+                                </div>
+                                <div class="plus-menu-item" data-action="upload">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Upload
+                                </div>
+                                <div class="plus-menu-item" data-action="files">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Files
+                                </div>
+                                <div class="plus-menu-item" data-action="wip-email">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Send WIP
+                                </div>
+                            </div>
+                            <input type="text" class="home-input" id="desktop-home-input" placeholder="What's cooking?">
+                            <button class="input-send" id="desktop-home-send">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="send-icon">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="examples">
+                            <button class="example-btn" data-question="Find a job">Find a job</button>
+                            <button class="example-btn" data-question="Check a client">Check a client</button>
+                            <button class="example-btn" data-question="What can Dot do?">What can Dot do?</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation State -->
+                <div class="conversation-state" id="desktop-conversation-state">
+                    <div class="conversation-area" id="desktop-conversation-area"></div>
+                    <div class="chat-input-area">
+                        <div class="chat-input-wrapper">
+                            <button class="input-plus" id="desktop-chat-plus">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                            <div class="plus-menu" id="desktop-chat-plus-menu">
+                                <div class="plus-menu-item" data-action="new-job">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> New Job
+                                </div>
+                                <div class="plus-menu-item" data-action="upload">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Upload
+                                </div>
+                                <div class="plus-menu-item" data-action="files">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Files
+                                </div>
+                                <div class="plus-menu-item" data-action="wip-email">
+                                    <svg class="chevron-icon-right" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Send WIP
+                                </div>
+                            </div>
+                            <input type="text" class="chat-input" id="desktop-chat-input" placeholder="Ask a follow-up...">
+                            <button class="input-send" id="desktop-chat-send">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="send-icon">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== WIP VIEW ===== -->
+            <section class="view view-wip" id="view-wip">
+                <div class="wip-controls">
+                    <div class="custom-dropdown" id="wip-client-dropdown">
+                        <button class="custom-dropdown-trigger" id="wip-client-trigger">
+                            <span>All Clients</span>
+                            <svg class="chevron-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="custom-dropdown-menu" id="wip-client-menu">
+                            <div class="custom-dropdown-option selected" data-value="all">All Clients</div>
+                        </div>
+                    </div>
+                    <div class="mode-toggle">
+                        <span class="mode-label" id="mode-mobile" onclick="setWipMode('mobile')">Mobile</span>
+                        <label class="mode-switch">
+                            <input type="checkbox" id="wip-mode-switch" checked onchange="toggleWipMode()">
+                            <span class="mode-switch-slider"></span>
+                        </label>
+                        <span class="mode-label active" id="mode-desktop" onclick="setWipMode('desktop')">Desktop</span>
+                    </div>
+                </div>
+                <div class="wip-content" id="wip-content">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading jobs...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== TRACKER VIEW ===== -->
+            <section class="view view-tracker" id="view-tracker">
+                <div class="tracker-controls">
+                    <div class="controls-left">
+                        <div class="custom-dropdown" id="tracker-client-dropdown">
+                            <button class="custom-dropdown-trigger" id="tracker-client-trigger">
+                                <span>Select Client</span>
+                                <svg class="chevron-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="custom-dropdown-menu" id="tracker-client-menu"></div>
+                        </div>
+                        <div class="custom-dropdown" id="tracker-month-dropdown">
+                            <button class="custom-dropdown-trigger" id="tracker-month-trigger">
+                                <span>January</span>
+                                <svg class="chevron-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="custom-dropdown-menu" id="tracker-month-menu">
+                                <div class="custom-dropdown-option selected" data-value="January">January</div>
+                                <div class="custom-dropdown-option" data-value="February">February</div>
+                                <div class="custom-dropdown-option" data-value="March">March</div>
+                                <div class="custom-dropdown-option" data-value="December">December</div>
+                                <div class="custom-dropdown-option" data-value="November">November</div>
+                                <div class="custom-dropdown-option" data-value="October">October</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mode-toggle">
+                        <span class="mode-label active" id="tracker-mode-spend">Month</span>
+                        <label class="mode-switch">
+                            <input type="checkbox" id="tracker-mode-switch">
+                            <span class="mode-switch-slider"></span>
+                        </label>
+                        <span class="mode-label" id="tracker-mode-pipeline">Quarter</span>
+                    </div>
+                </div>
+                <div class="tracker-content" id="tracker-content">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading tracker...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== JOB BAG VIEW ===== -->
+            <section class="view view-job-bag" id="view-job-bag">
+
+                <!-- View Header Image -->
+                <div class="jb-view-header">
+                    <img src="images/job-bag.png" alt="Job Bag" class="jb-view-header-img">
+                </div>
+
+                <!-- Job Header -->
+                <div class="jb-header">
+                    <div class="jb-header-left">
+                        <img id="jb-logo" class="jb-logo" src="" alt="">
+                        <div class="jb-title-block">
+                            <div class="jb-job-title-row">
+                                <div class="jb-job-title" id="jb-job-title"></div>
+                                <button class="jb-job-chevron" id="jb-job-chevron" onclick="toggleJobSwitcher()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="jb-job-dropdown" id="jb-job-dropdown"></div>
+                            </div>
+                            <div class="jb-job-desc" id="jb-job-desc"></div>
+                        </div>
+                    </div>
+                    <div class="jb-header-right">
+                        <div class="jb-wc-toggle-wrap">
+                            <span class="jb-wc-label jb-wc-left" id="jb-wc-label-left">With us</span>
+                            <label class="toggle" id="jb-with-client-toggle">
+                                <input type="checkbox" id="jb-with-client-checkbox" onchange="toggleWithClient()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="jb-wc-label jb-wc-right" id="jb-wc-label-right">With client</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid -->
+                <div class="jb-grid">
+
+                    <!-- Left column -->
+                    <div class="jb-left">
+
+                        <!-- Story -->
+                        <div class="jb-section-label-row">
+                            <span class="jb-section-label">Story</span>
+                            <a class="jb-label-pencil" id="jb-story-edit-link" title="Edit story">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </a>
+                        </div>
+                        <div class="jb-story" id="jb-story-card">
+                            <div class="jb-story-wrap" id="jb-story-wrap">
+                                <span class="jb-story-text" id="jb-story-text"></span>
+                                <div class="jb-story-fade" id="jb-story-fade">
+                                    <button class="jb-story-fade-btn" onclick="toggleStory()">more &rsaquo;</button>
+                                </div>
+                            </div>
+                            <button class="jb-story-more" id="jb-story-more" onclick="toggleStory()" style="display:none">Show less</button>
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="jb-section-label-row">
+                            <span class="jb-section-label">Summary</span>
+                            <a class="jb-label-pencil" id="jb-edit-link" title="Edit job">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </a>
+                        </div>
+                        <div class="jb-card">
+                            <div class="jb-summary-body">
+                                <div class="jb-meta-row">
+                                    <span class="jb-meta-key">Client</span>
+                                    <span class="jb-meta-val" id="jb-client-name"></span>
+                                </div>
+                                <div class="jb-meta-row">
+                                    <span class="jb-meta-key">Status</span>
+                                    <span class="jb-meta-val" id="jb-status"></span>
+                                </div>
+                                <div class="jb-meta-row">
+                                    <span class="jb-meta-key">Update due</span>
+                                    <span class="jb-meta-val" id="jb-update-due"></span>
+                                </div>
+                                <div class="jb-meta-row" style="border:none">
+                                    <span class="jb-meta-key">Live</span>
+                                    <span class="jb-meta-val" id="jb-live"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Budget -->
+                        <div class="jb-section-label-row">
+                            <span class="jb-section-label">Budget</span>
+                            <a class="jb-label-pencil" id="jb-tracker-link" title="Edit budget">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </a>
+                        </div>
+                        <div class="jb-card">
+                            <div class="jb-budget-body" id="jb-budget-body">
+                                <div class="jb-loading">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- Files -->
+                        <div class="jb-section-label-row">
+                            <span class="jb-section-label">Files</span>
+                        </div>
+                        <div class="jb-card">
+                            <div class="jb-files-body" id="jb-files-body">
+                                <span class="jb-files-empty">No files URL set</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Thread -->
+                    <div class="jb-thread-wrap">
+
+                        <!-- Updates label -->
+                        <div class="jb-section-label-row">
+                            <span class="jb-section-label">Updates</span>
+
+                        </div>
+
+                        <div class="jb-thread">
+                            <div class="jb-thread-body" id="jb-thread-body">
+                                <div class="jb-loading">Loading updates...</div>
+                            </div>
+                            <div class="jb-files-pill-row" id="jb-files-pill-row" style="display:none">
+                                <a class="jb-files-pill" id="jb-files-pill-link" href="#" target="_blank" rel="noopener">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                    Files
+                                </a>
+                            </div>
+                            <div class="jb-compose">
+                                <div class="jb-attach-preview" id="jb-attach-preview">
+                                    <div class="jb-attach-info">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                        <span class="jb-attach-name" id="jb-attach-name"></span>
+                                        <button class="jb-attach-remove" id="jb-attach-remove">✕</button>
+                                    </div>
+                                    <div class="jb-subfolder-picker">
+                                        <span class="jb-subfolder-label">Save to</span>
+                                        <button class="jb-subfolder-btn active" data-folder="Workings">Workings</button>
+                                        <button class="jb-subfolder-btn" data-folder="Briefs">Briefs</button>
+                                        <button class="jb-subfolder-btn" data-folder="Finals">Finals</button>
+                                    </div>
+                                </div>
+                                <div class="jb-compose-row">
+                                    <input type="file" id="jb-file-input" style="display:none">
+                                    <button class="jb-attach-btn" id="jb-attach-btn" title="Attach file">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                    </button>
+                                    <textarea class="jb-compose-input" id="jb-compose-input" placeholder="What's the latest on this job…" rows="1"></textarea>
+                                    <button class="jb-post-btn" id="jb-post-btn">UPDATE</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Desktop Footer (home view only) -->
+        <footer class="desktop-footer" id="desktop-footer">
+            <div class="footer-left">
+                <img src="images/ai2-logo.png" alt="ai&#178;" class="footer-logo">
+            </div>
+            <div class="footer-right">agency intuition &#215; artificial intelligence</div>
+        </footer>
+    </div>
+
+    <!-- Job Edit Modal -->
+    <div class="job-modal-overlay" id="job-edit-modal">
+        <div class="job-modal">
+            <div class="job-modal-header">
+                <div class="job-modal-title-row">
+                    <img src="" alt="" class="job-modal-logo" id="job-modal-logo">
+                    <span class="job-modal-title" id="job-modal-title">LAB 055 | Election 26</span>
+                    <button class="job-modal-edit-btn" id="job-modal-edit-btn" title="Edit job name">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                    </button>
+                </div>
+                <button class="job-modal-close" onclick="closeJobModal()">&times;</button>
+            </div>
+            <div class="job-modal-body">
+                <!-- Hero Section: Update + Update Due -->
+                <div class="job-form-group">
+                    <label class="job-form-label">Update</label>
+                    <textarea class="job-form-input job-form-textarea" id="job-edit-message" placeholder="What's the latest?" rows="1"></textarea>
+                </div>
+                <div class="job-form-group">
+                    <label class="job-form-label">Update Due</label>
+                    <input type="date" class="job-form-input" id="job-edit-update-due">
+                </div>
+                
+                <div class="job-modal-divider"></div>
+                
+                <!-- Details Section -->
+                <div class="job-form-group">
+                    <label class="job-form-label">Owner</label>
+                    <select class="job-form-input" id="job-edit-owner">
+                        <option value="">Select...</option>
+                    </select>
+                </div>
+                <div class="job-form-group">
+                    <label class="job-form-label">Description</label>
+                    <textarea class="job-form-input job-form-textarea" id="job-edit-description" rows="1"></textarea>
+                </div>
+                <div class="job-form-row">
+                    <div class="job-form-group">
+                        <label class="job-form-label">Status</label>
+                        <select class="job-form-input" id="job-edit-status">
+                            <option value="Incoming">Incoming</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="On Hold">On Hold</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="job-form-group">
+                        <label class="job-form-label">Live</label>
+                        <select class="job-form-input" id="job-edit-live">
+                            <option value="Tbc">Tbc</option>
+                            <option value="Jan">Jan</option>
+                            <option value="Feb">Feb</option>
+                            <option value="Mar">Mar</option>
+                            <option value="Apr">Apr</option>
+                            <option value="May">May</option>
+                            <option value="Jun">Jun</option>
+                            <option value="Jul">Jul</option>
+                            <option value="Aug">Aug</option>
+                            <option value="Sep">Sep</option>
+                            <option value="Oct">Oct</option>
+                            <option value="Nov">Nov</option>
+                            <option value="Dec">Dec</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Links Row -->
+                <div class="job-modal-links">
+                    <a href="#" class="job-modal-link" id="job-modal-teams-link" target="_blank">TEAMS <svg class="link-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></a>
+                    <a href="#" class="job-modal-link" id="job-modal-tracker-link">TRACKER <svg class="link-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></a>
+                    <a href="#" class="job-modal-link" id="job-modal-wip-link">WIP <svg class="link-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></a>
+                </div>
+            </div>
+            <div class="job-modal-footer">
+                <div class="with-client-toggle">
+                    <label class="toggle">
+                        <input type="checkbox" id="job-edit-with-client">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="with-client-label">With Client</span>
+                </div>
+                <button class="job-btn job-btn-primary" id="job-save-btn" onclick="saveJobUpdate()">UPDATE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Job Name Modal -->
+    <div class="job-modal-overlay" id="job-name-modal">
+        <div class="job-name-modal">
+            <h3 class="job-name-modal-title">Edit job name</h3>
+            <div class="job-form-group">
+                <label class="job-form-label">Job Number</label>
+                <input type="text" class="job-form-input" id="job-edit-number">
+            </div>
+            <div class="job-form-group">
+                <label class="job-form-label">Job Name</label>
+                <input type="text" class="job-form-input" id="job-edit-job-name">
+            </div>
+            <div class="job-name-modal-buttons">
+                <button class="job-btn job-btn-secondary" onclick="closeJobNameModal()">Cancel</button>
+                <button class="job-btn job-btn-primary" onclick="saveJobName()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Job Modal -->
+    <div class="job-modal-overlay" id="new-job-modal">
+        <div class="job-modal new-job-modal">
+            <!-- Job Form -->
+            <div id="new-job-form" class="new-job-step">
+                <div class="job-modal-header">
+                    <div class="job-modal-header-left">
+                        <img class="job-modal-logo" id="new-job-logo" src="images/logos/Unknown.png" alt="">
+                        <h2 class="job-modal-title">New Job<span id="new-job-number-wrapper" style="display: none;"> <svg class="title-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ED1C24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> <span id="new-job-number"></span></span></h2>
+                    </div>
+                    <button class="job-modal-close" onclick="closeNewJobModal()">&times;</button>
+                </div>
+                <div class="job-modal-body">
+                    <!-- Client dropdown -->
+                    <div class="job-form-group">
+                        <label class="job-form-label">Client <span class="required">*</span></label>
+                        <div class="custom-dropdown form-dropdown" id="new-job-client-dropdown">
+                            <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="new-job-client-trigger" onclick="toggleNewJobDropdown('client')">
+                                <span>Select client...</span>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="custom-dropdown-menu" id="new-job-client-menu">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Job Name (required) -->
+                    <div class="job-form-group">
+                        <label class="job-form-label">Job Name <span class="required">*</span></label>
+                        <input type="text" class="job-form-input" id="new-job-name" placeholder="e.g. Summer Campaign">
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="job-form-group">
+                        <label class="job-form-label">Description</label>
+                        <textarea class="job-form-input job-form-textarea" id="new-job-description" placeholder="What's this job about?" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="job-modal-divider"></div>
+                    
+                    <!-- Owner -->
+                    <div class="job-form-group">
+                        <label class="job-form-label">Owner</label>
+                        <div class="custom-dropdown form-dropdown" id="new-job-owner-dropdown">
+                            <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="new-job-owner-trigger" onclick="toggleNewJobDropdown('owner')">
+                                <span>Select client first...</span>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div class="custom-dropdown-menu" id="new-job-owner-menu">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status + Ballpark row -->
+                    <div class="job-form-row">
+                        <div class="job-form-group">
+                            <label class="job-form-label">Status</label>
+                            <div class="custom-dropdown form-dropdown" id="new-job-status-dropdown">
+                                <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="new-job-status-trigger" onclick="toggleNewJobDropdown('status')">
+                                    <span>Incoming</span>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="custom-dropdown-menu" id="new-job-status-menu">
+                                    <div class="custom-dropdown-option selected" data-value="Incoming">Incoming</div>
+                                    <div class="custom-dropdown-option" data-value="In Progress">In Progress</div>
+                                    <div class="custom-dropdown-option" data-value="On Hold">On Hold</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="job-form-group">
+                            <label class="job-form-label">Ballpark</label>
+                            <div class="custom-dropdown form-dropdown" id="new-job-ballpark-dropdown">
+                                <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="new-job-ballpark-trigger" onclick="toggleNewJobDropdown('ballpark')">
+                                    <span>$5,000</span>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="custom-dropdown-menu" id="new-job-ballpark-menu">
+                                    <div class="custom-dropdown-option" data-value="2500">$2,500</div>
+                                    <div class="custom-dropdown-option selected" data-value="5000">$5,000</div>
+                                    <div class="custom-dropdown-option" data-value="7500">$7,500</div>
+                                    <div class="custom-dropdown-option" data-value="10000">$10,000</div>
+                                    <div class="custom-dropdown-option" data-value="15000">$15,000</div>
+                                    <div class="custom-dropdown-option" data-value="20000">$20,000</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Update Due + Live row -->
+                    <div class="job-form-row">
+                        <div class="job-form-group">
+                            <label class="job-form-label">Update Due</label>
+                            <input type="date" class="job-form-input" id="new-job-update-due">
+                        </div>
+                        <div class="job-form-group">
+                            <label class="job-form-label">Live</label>
+                            <div class="custom-dropdown form-dropdown" id="new-job-live-dropdown">
+                                <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="new-job-live-trigger" onclick="toggleNewJobDropdown('live')">
+                                    <span>Tbc</span>
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="custom-dropdown-menu" id="new-job-live-menu">
+                                    <div class="custom-dropdown-option selected" data-value="Tbc">Tbc</div>
+                                    <div class="custom-dropdown-option" data-value="Jan">January</div>
+                                    <div class="custom-dropdown-option" data-value="Feb">February</div>
+                                    <div class="custom-dropdown-option" data-value="Mar">March</div>
+                                    <div class="custom-dropdown-option" data-value="Apr">April</div>
+                                    <div class="custom-dropdown-option" data-value="May">May</div>
+                                    <div class="custom-dropdown-option" data-value="Jun">June</div>
+                                    <div class="custom-dropdown-option" data-value="Jul">July</div>
+                                    <div class="custom-dropdown-option" data-value="Aug">August</div>
+                                    <div class="custom-dropdown-option" data-value="Sep">September</div>
+                                    <div class="custom-dropdown-option" data-value="Oct">October</div>
+                                    <div class="custom-dropdown-option" data-value="Nov">November</div>
+                                    <div class="custom-dropdown-option" data-value="Dec">December</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="job-modal-footer">
+                    <div class="with-client-toggle">
+                        <label class="toggle">
+                            <input type="checkbox" id="new-job-with-client">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="with-client-label">With Client</span>
+                    </div>
+                    <label class="teams-checkbox">
+                        <input type="checkbox" id="new-job-setup-teams" checked>
+                        <span class="teams-checkmark">&#10003;</span>
+                        <span class="teams-label">Teams</span>
+                    </label>
+                    <button class="job-btn job-btn-primary" id="new-job-create-btn" onclick="submitNewJob()">CREATE JOB</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Confirmation -->
+            <div id="new-job-step-3" class="new-job-step" style="display: none;">
+                <div class="job-modal-header">
+                    <div class="job-modal-header-left">
+                        <img class="job-modal-logo" id="new-job-confirm-logo" src="" alt="">
+                        <h2 class="job-modal-title" id="new-job-confirm-title">JOB CREATED</h2>
+                    </div>
+                    <button class="job-modal-close" onclick="closeNewJobModal()">&times;</button>
+                </div>
+                <div class="job-modal-body new-job-confirmation">
+                    <div class="new-job-success-icon">&#10003;</div>
+                    <p class="new-job-confirm-text" id="new-job-confirm-text">Job created</p>
+                    <p class="new-job-confirm-subtext" id="new-job-confirm-subtext">Teams & Files not set up</p>
+                </div>
+                <div class="job-modal-footer">
+                    <button class="job-btn job-btn-primary" onclick="closeNewJobModal()">DONE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Summary Modal (read-only for clients) -->
+    <div class="job-modal-overlay" id="job-summary-modal">
+        <div class="job-modal">
+            <div class="job-modal-header">
+                <div class="job-modal-title-row">
+                    <img src="" alt="" class="job-modal-logo" id="job-summary-logo">
+                    <span class="job-modal-title" id="job-summary-title">SKY 018 | Offboarding</span>
+                </div>
+                <button class="job-modal-close" onclick="closeJobSummary()">&times;</button>
+            </div>
+            <div class="job-modal-body">
+                <div class="summary-section">
+                    <div class="summary-label">The Job</div>
+                    <div class="summary-text" id="job-summary-desc">Simplify and improve Sky Exit Journey</div>
+                </div>
+                
+                <div class="summary-section">
+                    <div class="summary-label">Owner</div>
+                    <div class="summary-text" id="job-summary-owner">Michael</div>
+                </div>
+                
+                <div class="summary-section">
+                    <div class="summary-label">The Story</div>
+                    <div class="summary-text" id="job-summary-story">Still working on it</div>
+                </div>
+                
+                <div class="summary-section">
+                    <div class="summary-label">Update</div>
+                    <div class="summary-text" id="job-summary-update">No updates yet</div>
+                </div>
+                
+                <div class="summary-row">
+                    <div class="summary-section">
+                        <div class="summary-label">Update Due</div>
+                        <div class="summary-text" id="job-summary-due">7 Feb 2026</div>
+                    </div>
+                    <div class="summary-section">
+                        <div class="summary-label">Live</div>
+                        <div class="summary-text" id="job-summary-live">March</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coming Soon Modal -->
+    <div class="coming-soon-modal-overlay" id="coming-soon-modal">
+        <div class="coming-soon-modal">
+            <button class="coming-soon-close" onclick="closeComingSoonModal()">&times;</button>
+            <img src="images/dot-sitting.png" alt="Dot" class="coming-soon-img">
+            <p class="coming-soon-text" id="coming-soon-text">Coming soon</p>
+        </div>
+    </div>
+
+    <!-- Files Modal -->
+    <div class="job-modal-overlay" id="files-modal">
+        <div class="job-modal files-modal">
+            <div class="job-modal-header">
+                <div class="job-modal-header-left">
+                    <img class="job-modal-logo" id="files-modal-logo" src="images/logos/Unknown.png" alt="">
+                </div>
+                <button class="job-modal-close" onclick="closeFilesModal()">&times;</button>
+            </div>
+            <div class="job-modal-body">
+                <!-- Client dropdown -->
+                <div class="job-form-group">
+                    <label class="job-form-label">Client</label>
+                    <div class="custom-dropdown form-dropdown" id="files-client-dropdown">
+                        <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="files-client-trigger" onclick="toggleFilesDropdown('client')">
+                            <span>Select client...</span>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="custom-dropdown-menu" id="files-client-menu"></div>
+                    </div>
+                </div>
+                
+                <!-- Job dropdown -->
+                <div class="job-form-group">
+                    <label class="job-form-label">Job</label>
+                    <div class="custom-dropdown form-dropdown" id="files-job-dropdown">
+                        <button type="button" class="custom-dropdown-trigger form-dropdown-trigger disabled" id="files-job-trigger" onclick="toggleFilesDropdown('job')">
+                            <span>Select client first...</span>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="custom-dropdown-menu" id="files-job-menu"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="job-modal-footer" id="files-modal-footer" style="display: none;">
+                <button class="job-btn job-btn-primary" id="files-go-btn" onclick="goToFiles()">FIND FILES</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIP Email Modal -->
+    <div class="job-modal-overlay" id="wip-email-modal">
+        <div class="job-modal files-modal">
+            <div class="job-modal-header">
+                <div class="job-modal-header-left">
+                    <img class="job-modal-logo" id="wip-email-modal-logo" src="images/logos/Unknown.png" alt="">
+                </div>
+                <button class="job-modal-close" onclick="closeWipEmailModal()">&times;</button>
+            </div>
+            <div class="job-modal-body">
+                <!-- Client dropdown -->
+                <div class="job-form-group">
+                    <label class="job-form-label">Client</label>
+                    <div class="custom-dropdown form-dropdown" id="wip-email-client-dropdown">
+                        <button type="button" class="custom-dropdown-trigger form-dropdown-trigger" id="wip-email-client-trigger" onclick="toggleWipEmailDropdown()">
+                            <span>Select client...</span>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ED1C24" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="custom-dropdown-menu" id="wip-email-client-menu"></div>
+                    </div>
+                </div>
+
+                <!-- People checkboxes -->
+                <div class="job-form-group" id="wip-email-people-group" style="display: none;">
+                    <label class="job-form-label">Send to</label>
+                    <div id="wip-email-people-list" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Custom note -->
+                <div class="job-form-group" id="wip-email-note-group" style="display: none;">
+                    <label class="job-form-label">Add a note (optional)</label>
+                    <textarea class="job-form-input job-form-textarea" id="wip-email-note" placeholder="That project with the chickens needs some eggs..." rows="2"></textarea>
+                </div>
+            </div>
+            <div class="job-modal-footer" id="wip-email-footer" style="display: none;">
+                <button class="job-btn job-btn-primary" id="wip-email-send-btn" onclick="sendWipEmail()">SEND WIP</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <!-- Story Edit Modal -->
+    <!-- Update Edit Modal -->
+    <div class="job-modal-overlay" id="update-edit-modal">
+        <div class="job-name-modal" style="max-width:420px">
+            <h3 class="job-name-modal-title">Edit update</h3>
+            <div class="job-form-group">
+                <textarea class="job-form-input jb-story-textarea" id="update-edit-input" rows="4" placeholder="What happened?"></textarea>
+            </div>
+            <div class="job-form-group" style="margin-top:8px">
+                <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#999;display:block;margin-bottom:4px">Date <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — leave blank to keep original)</span></label>
+                <input type="date" id="update-edit-date" class="job-form-input" style="font-size:13px;padding:8px 12px">
+            </div>
+            <div class="job-name-modal-buttons" id="update-edit-footer" style="justify-content:space-between">
+                <button class="job-btn job-btn-secondary" style="color:var(--red)" onclick="confirmDeleteUpdate()">Delete</button>
+                <div style="display:flex;gap:8px">
+                    <button class="job-btn job-btn-secondary" onclick="closeUpdateEditModal()">Cancel</button>
+                    <button class="job-btn job-btn-primary" id="update-save-btn" onclick="saveUpdateEdit()">Save</button>
+                </div>
+            </div>
+            <div class="job-name-modal-buttons" id="update-delete-confirm" style="display:none;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;color:#666">Delete this update?</span>
+                <div style="display:flex;gap:8px">
+                    <button class="job-btn job-btn-secondary" onclick="cancelDeleteUpdate()">Cancel</button>
+                    <button class="job-btn job-btn-primary" id="update-delete-confirm-btn" onclick="executeDeleteUpdate()">Yes, delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story Edit Modal -->
+    <div class="job-modal-overlay" id="story-edit-modal">
+        <div class="job-name-modal" style="max-width:400px">
+            <h3 class="job-name-modal-title">Edit story</h3>
+            <div class="job-form-group">
+                <textarea class="job-form-input jb-story-textarea" id="story-edit-input" maxlength="250" rows="4" placeholder="Two sentences. Who we're talking to and why they'll care."></textarea>
+                <div class="jb-story-char-count"><span id="story-char-count">0</span> / 250</div>
+            </div>
+            <div class="job-name-modal-buttons">
+                <button class="job-btn job-btn-secondary" onclick="closeStoryModal()">Cancel</button>
+                <button class="job-btn job-btn-primary" id="story-save-btn" onclick="saveStory()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracker Edit Modal -->
+    <div class="tracker-modal-overlay" id="tracker-edit-modal">
+        <div class="tracker-modal">
+            <div class="tracker-modal-header">
+                <span class="tracker-modal-title" id="tracker-modal-title">Update Project</span>
+                <div class="tracker-modal-header-right">
+                    <div class="ballpark-toggle">
+                        <span class="ballpark-label" id="tracker-ballpark-label">Ballpark</span>
+                        <label class="toggle">
+                            <input type="checkbox" id="tracker-edit-ballpark">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <button class="tracker-modal-close" onclick="closeTrackerModal()">x</button>
+                </div>
+            </div>
+            <div class="tracker-modal-body">
+                <div class="tracker-form-group">
+                    <label class="tracker-form-label">Project Name</label>
+                    <input type="text" class="tracker-form-input" id="tracker-edit-name" readonly>
+                </div>
+                <div class="tracker-form-group">
+                    <label class="tracker-form-label">Description</label>
+                    <input type="text" class="tracker-form-input" id="tracker-edit-description">
+                </div>
+                <div class="tracker-form-group">
+                    <label class="tracker-form-label">Stage</label>
+                    <select class="tracker-form-input" id="tracker-edit-stage">
+                        <option value="Triage">Triage</option>
+                        <option value="Simplify">Simplify</option>
+                        <option value="Craft">Craft</option>
+                        <option value="Deliver">Deliver</option>
+                    </select>
+                </div>
+                <div class="tracker-form-row">
+                    <div class="tracker-form-group">
+                        <label class="tracker-form-label">Spend</label>
+                        <input type="number" class="tracker-form-input" id="tracker-edit-spend">
+                    </div>
+                    <div class="tracker-form-group">
+                        <label class="tracker-form-label">Month</label>
+                        <select class="tracker-form-input" id="tracker-edit-month">
+                            <option value="January">January</option>
+                            <option value="February">February</option>
+                            <option value="March">March</option>
+                            <option value="April">April</option>
+                            <option value="May">May</option>
+                            <option value="June">June</option>
+                            <option value="July">July</option>
+                            <option value="August">August</option>
+                            <option value="September">September</option>
+                            <option value="October">October</option>
+                            <option value="November">November</option>
+                            <option value="December">December</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tracker-form-group">
+                    <label class="tracker-form-label">Spend Type</label>
+                    <select class="tracker-form-input" id="tracker-edit-spendtype">
+                        <option value="Project budget">Project budget</option>
+                        <option value="Extra budget">Extra budget</option>
+                        <option value="Project on us">Project on us</option>
+                    </select>
+                </div>
+            </div>
+            <div class="tracker-modal-footer">
+                <button class="tracker-btn tracker-btn-secondary" onclick="closeTrackerModal()">Cancel</button>
+                <button class="tracker-btn tracker-btn-primary" id="tracker-save-btn" onclick="saveTrackerProject()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

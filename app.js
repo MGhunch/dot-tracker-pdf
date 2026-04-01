@@ -46,6 +46,7 @@ function init() {
     handleDeepLink();    // First - capture URL params
     checkSession();      // Then - check session (auto-login if deep link)
     setupEventListeners();
+    setupTrackerModalListeners();  // Set up tracker modal pill handlers
 }
 
 // ===== DEEP LINK HANDLING =====
@@ -128,7 +129,7 @@ function setupEventListeners() {
     // Login form - Desktop
     $('login-send')?.addEventListener('click', () => requestLogin('desktop'));
     $('login-email')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') requestLogin('desktop'); });
-    $('login-try-again')?.addEventListener('click', (e) => { e.preventDefault(); resetLoginForm(); });
+    $('login-try-again')?.addEventListener('click', () => resetLoginForm());
     
     // Login form - Phone
     $('phone-login-send')?.addEventListener('click', () => requestLogin('phone'));
@@ -176,6 +177,19 @@ function setupEventListeners() {
     $$('.example-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const question = btn.dataset.question;
+            
+            // Special handling for "Find a job" - open modal instead
+            if (question === 'Find a job') {
+                openJobFinder();
+                return;
+            }
+            
+            // Special handling for "Send a wip" - open modal instead
+            if (question === 'Send a wip') {
+                openWipEmailModal();
+                return;
+            }
+            
             const layout = isDesktop() ? 'desktop' : 'phone';
             const input = $(layout + '-home-input');
             if (input) input.value = question;
@@ -231,6 +245,8 @@ function setupEventListeners() {
             // Route to appropriate handler
             if (action === 'new-job') {
                 openNewJobModal();
+            } else if (action === 'find-job') {
+                openJobFinder();
             } else if (action === 'files') {
                 openFilesModal();
             } else if (action === 'wip-email') {
@@ -317,6 +333,9 @@ async function checkSession() {
         if (errorEl) errorEl.textContent = errorMsg;
         if (phoneErrorEl) phoneErrorEl.textContent = errorMsg;
     }
+    
+    // Auth check complete - show login
+    document.body.classList.remove('loading');
 }
 
 async function requestLogin(source = 'desktop') {
@@ -360,11 +379,14 @@ async function requestLogin(source = 'desktop') {
             $('desktop-login-sent')?.classList.remove('hidden');
             $('phone-login-input')?.classList.add('hidden');
             $('phone-login-sent')?.classList.remove('hidden');
+            // Swap Dot image to "On it"
+            const dotImg = $('login-dot-img');
+            if (dotImg) dotImg.src = 'images/Onit.png';
         } else {
             if (errorEl) errorEl.textContent = data.message || "Something went wrong. Try again?";
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Send link';
+                btn.textContent = 'Get a magic link';
             }
         }
     } catch (e) {
@@ -372,7 +394,7 @@ async function requestLogin(source = 'desktop') {
         if (errorEl) errorEl.textContent = "Couldn't connect. Try again?";
         if (btn) {
             btn.disabled = false;
-            btn.textContent = 'Send link';
+            btn.textContent = 'Get a magic link';
         }
     }
 }
@@ -383,6 +405,10 @@ function resetLoginForm() {
     $('desktop-login-input')?.classList.remove('hidden');
     $('phone-login-sent')?.classList.add('hidden');
     $('phone-login-input')?.classList.remove('hidden');
+    
+    // Swap Dot image back to "Hello"
+    const dotImg = $('login-dot-img');
+    if (dotImg) dotImg.src = 'images/Dotandhello.png';
     
     // Clear inputs and errors
     const loginEmail = $('login-email');
@@ -398,7 +424,7 @@ function resetLoginForm() {
     const phoneLoginSend = $('phone-login-send');
     if (loginSend) {
         loginSend.disabled = false;
-        loginSend.textContent = 'Send link';
+        loginSend.textContent = 'Get a magic link';
     }
     if (phoneLoginSend) {
         phoneLoginSend.disabled = false;
@@ -407,8 +433,9 @@ function resetLoginForm() {
 }
 
 function unlockApp() {
-    // Remove logged-out state
+    // Remove logged-out and loading states
     document.body.classList.remove('logged-out');
+    document.body.classList.remove('loading');
     
     const placeholder = `What's cooking ${state.currentUser.name}?`;
     if ($('phone-home-input')) $('phone-home-input').placeholder = placeholder;
@@ -481,8 +508,8 @@ function updateExampleButtons() {
     if (level === 'Full') {
         buttons = [
             { question: 'Find a job', label: 'Find a job' },
-            { question: 'Check the WIP', label: 'Check the WIP' },
-            { question: 'Meet Dot', label: 'Meet Dot' }
+            { question: 'Send a wip', label: 'Send a wip' },
+            { question: 'Show me jobs due today and tomorrow', label: 'Deadlines' }
         ];
     } else if (level === 'Client Tracker') {
         buttons = [
@@ -1078,10 +1105,8 @@ function renderResponse({ message, jobs = [], nextPrompt = null }) {
         });
     });
     
-    response.querySelectorAll('.job-header[data-job-id]').forEach(header => {
-        header.addEventListener('click', () => {
-            document.getElementById(header.dataset.jobId)?.classList.toggle('expanded');
-        });
+    response.querySelectorAll('.job-card').forEach(card => {
+        card.addEventListener('click', () => openJobDetail(card.dataset.job));
     });
     
     if (area) area.scrollTop = area.scrollHeight;
@@ -1314,13 +1339,11 @@ function closeJobSummary() {
     $('job-summary-modal')?.classList.remove('visible');
 }
 
-// Helper: open the right view based on access level
+// Helper: open Job Bag for any user
 function openJobDetail(jobNumber) {
-    if (state.currentUser?.accessLevel === 'Full') {
-        openJobBag(jobNumber);
-    } else {
-        openJobSummary(jobNumber);
-    }
+    // Track as recent
+    trackRecentJob(jobNumber);
+    openJobBag(jobNumber);
 }
 
 // ===== JOB BAG =====
@@ -1420,7 +1443,7 @@ async function openJobBag(jobNumber) {
 
         pencil.style.opacity = '0.4';
         pencil.style.pointerEvents = 'none';
-        if (budgetBody) budgetBody.innerHTML = '<div style="font-size:12px;color:#999;">Loading…</div>';
+        if (budgetBody) budgetBody.innerHTML = loadingDots('small');
 
         await loadTrackerData(job.clientCode);
 
@@ -1439,6 +1462,61 @@ async function openJobBag(jobNumber) {
 
     // Navigate to Job Bag view
     navigateTo('job-bag');
+
+    // Hide interactive elements for non-Full users (read-only mode)
+    const isFullAccess = state.currentUser?.accessLevel === 'Full';
+    const toggleWrap = document.querySelector('.jb-wc-toggle-wrap');
+    const compose = document.querySelector('.jb-compose');
+    const editLink = $('jb-edit-link');
+    const storyEditLink = $('jb-story-edit-link');
+    const trackerLink = $('jb-tracker-link');
+    
+    if (toggleWrap) toggleWrap.style.display = isFullAccess ? '' : 'none';
+    if (compose) compose.style.display = isFullAccess ? '' : 'none';
+    if (editLink) editLink.style.display = isFullAccess ? '' : 'none';
+    if (storyEditLink) storyEditLink.style.display = isFullAccess ? '' : 'none';
+    if (trackerLink) trackerLink.style.display = isFullAccess ? '' : 'none';
+
+    // Make cards clickable for Full access users
+    const storyCard = $('jb-story-card');
+    const summaryBody = document.querySelector('.jb-summary-body');
+    const summaryCardEl = summaryBody?.closest('.jb-card');
+    const budgetBody = $('jb-budget-body');
+    const budgetCard = budgetBody?.closest('.jb-card');
+
+    if (isFullAccess) {
+        // Story card → Story modal
+        if (storyCard) {
+            storyCard.style.cursor = 'pointer';
+            storyCard.onclick = (e) => {
+                if (e.target.closest('.jb-story-fade-btn') || e.target.closest('.jb-story-more')) return;
+                openStoryModal(currentBagJob);
+            };
+        }
+
+        // Summary card → Job Edit modal
+        if (summaryCardEl) {
+            summaryCardEl.style.cursor = 'pointer';
+            summaryCardEl.onclick = () => openJobModal(jobNumber);
+        }
+
+        // Budget card → Tracker modal (with loading)
+        if (budgetCard) {
+            budgetCard.style.cursor = 'pointer';
+            budgetCard.onclick = async () => {
+                budgetBody.innerHTML = loadingDots('small');
+                await loadTrackerData(job.clientCode);
+                loadJobBagBudget(jobNumber);
+                const month = new Date().toLocaleString('en-US', { month: 'long' });
+                openTrackerEditModal(jobNumber, month);
+            };
+        }
+    } else {
+        // Remove clickability for non-Full users
+        if (storyCard) { storyCard.style.cursor = ''; storyCard.onclick = null; }
+        if (summaryCardEl) { summaryCardEl.style.cursor = ''; summaryCardEl.onclick = null; }
+        if (budgetCard) { budgetCard.style.cursor = ''; budgetCard.onclick = null; }
+    }
 
     // Update URL so refresh returns to this job
     const compactJob = jobNumber.replace(/\s+/g, '');
@@ -1474,6 +1552,48 @@ function closeJobBag() {
     currentBagJob = null;
     window.history.replaceState({}, '', window.location.pathname);
     navigateTo('wip');
+}
+
+// Refresh the Job Bag left column from currentBagJob state
+function refreshJobBagLeft() {
+    if (!currentBagJob) return;
+    const job = currentBagJob;
+
+    // Summary fields
+    $('jb-client-name').textContent = job.projectOwner || '—';
+    $('jb-status').textContent = job.status || '—';
+    $('jb-live').textContent = job.liveDate || 'Tbc';
+
+    // Update due with formatting
+    const dueEl = $('jb-update-due');
+    if (job.updateDue) {
+        const due = new Date(job.updateDue);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const dueDay = new Date(due);
+        dueDay.setHours(0,0,0,0);
+        const diffDays = Math.round((dueDay - today) / 86400000);
+
+        let dueText;
+        if (diffDays === 0) dueText = 'Today';
+        else if (diffDays === 1) dueText = 'Tomorrow';
+        else if (diffDays === -1) dueText = 'Yesterday';
+        else if (diffDays < 0) dueText = `${Math.abs(diffDays)} days overdue`;
+        else dueText = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+        dueEl.textContent = dueText;
+        dueEl.className = diffDays < 0 ? 'jb-meta-val overdue' : 'jb-meta-val';
+    } else {
+        dueEl.textContent = 'Not set';
+        dueEl.className = 'jb-meta-val';
+    }
+
+    // Story
+    const storyEl = $('jb-story-text');
+    if (storyEl) storyEl.textContent = job.theStory || 'Watch this space.';
+
+    // Budget — reload from API
+    loadJobBagBudget(job.jobNumber);
 }
 
 // ===== JOB BAG SWITCHER =====
@@ -1557,11 +1677,8 @@ function goToAllJobs() {
     $('jb-job-chevron')?.classList.remove('open');
     $('jb-job-dropdown')?.classList.remove('open');
     
-    // Go to WIP filtered by current client
-    if (currentBagJob) {
-        state.wipClient = currentBagJob.clientCode;
-    }
-    navigateTo('wip');
+    // Open Job Finder
+    openJobFinder();
 }
 
 // Close dropdown on outside click
@@ -1576,6 +1693,185 @@ document.addEventListener('click', (e) => {
 window.toggleJobSwitcher = toggleJobSwitcher;
 window.selectJob = selectJob;
 window.goToAllJobs = goToAllJobs;
+
+// ===== JOB FINDER MODAL =====
+
+const RECENT_JOBS_KEY = 'dot_recent_jobs';
+const MAX_RECENT_JOBS = 10;
+
+// Client name to code mapping for search
+const CLIENT_NAME_MAP = {
+    'tower': ['TOW'],
+    'sky': ['SKY'],
+    'fisher': ['FIS'],
+    'fisher funds': ['FIS'],
+    'one': ['ONE', 'ONS', 'ONB'],
+    'one nz': ['ONE', 'ONS', 'ONB'],
+    'hunch': ['HUN'],
+    'labour': ['LAB'],
+    'labor': ['LAB']
+};
+
+// Debounce for search
+let jobFinderDebounceTimer = null;
+
+function openJobFinder() {
+    const modal = $('job-finder-modal');
+    if (!modal) return;
+    
+    // Reset state
+    $('job-finder-search-input').value = '';
+    
+    // Render and show
+    renderJobFinderList();
+    modal.classList.add('visible');
+    
+    // Focus search after animation
+    setTimeout(() => $('job-finder-search-input')?.focus(), 200);
+}
+
+function closeJobFinder() {
+    const modal = $('job-finder-modal');
+    if (modal) modal.classList.remove('visible');
+}
+
+function debouncedFilterJobFinder() {
+    clearTimeout(jobFinderDebounceTimer);
+    jobFinderDebounceTimer = setTimeout(() => {
+        renderJobFinderList();
+    }, 150);
+}
+
+function renderJobFinderList() {
+    const container = $('job-finder-list');
+    const searchInput = $('job-finder-search-input');
+    if (!container) return;
+    
+    const searchTerm = (searchInput?.value || '').toLowerCase().trim();
+    
+    // Get active jobs
+    let jobs = state.allJobs.filter(job => job.status !== 'Completed');
+    
+    // Filter by client (for client access users)
+    if (state.clientFilter) {
+        jobs = jobs.filter(job => job.clientCode === state.clientFilter);
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+        // Check if search matches a client name
+        let matchingClientCodes = [];
+        for (const [name, codes] of Object.entries(CLIENT_NAME_MAP)) {
+            if (name.includes(searchTerm)) {
+                matchingClientCodes = matchingClientCodes.concat(codes);
+            }
+        }
+        
+        jobs = jobs.filter(job => {
+            const jobNum = (job.jobNumber || '').toLowerCase();
+            const jobName = (job.jobName || '').toLowerCase();
+            const matchesJobNum = jobNum.includes(searchTerm);
+            const matchesJobName = jobName.includes(searchTerm);
+            const matchesClientName = matchingClientCodes.includes(job.clientCode);
+            return matchesJobNum || matchesJobName || matchesClientName;
+        });
+    }
+    
+    // Sort by recent views first, then by last update
+    const recentJobs = getRecentJobs();
+    jobs.sort((a, b) => {
+        const aRecent = recentJobs.indexOf(a.jobNumber);
+        const bRecent = recentJobs.indexOf(b.jobNumber);
+        
+        // Both in recent - sort by recency
+        if (aRecent !== -1 && bRecent !== -1) {
+            return aRecent - bRecent;
+        }
+        // Only a in recent
+        if (aRecent !== -1) return -1;
+        // Only b in recent
+        if (bRecent !== -1) return 1;
+        
+        // Neither in recent - sort by last update
+        const aDate = a.lastUpdateMade ? new Date(a.lastUpdateMade) : new Date(0);
+        const bDate = b.lastUpdateMade ? new Date(b.lastUpdateMade) : new Date(0);
+        return bDate - aDate;
+    });
+    
+    if (jobs.length === 0) {
+        container.innerHTML = '<div class="job-finder-empty">No jobs found</div>';
+        return;
+    }
+    
+    let html = '';
+    jobs.forEach(job => {
+        html += `
+            <div class="job-finder-row" onclick="selectJobFromFinder('${job.jobNumber}')">
+                <div class="job-finder-row-logo">
+                    <img src="${getLogoUrl(job.clientCode)}" alt="${job.clientCode}" onerror="this.src='images/logos/Unknown.png'">
+                </div>
+                <div class="job-finder-row-info">
+                    <span class="job-finder-row-number">${job.jobNumber}</span>
+                    <span class="job-finder-row-name">${job.jobName || ''}</span>
+                </div>
+                <svg class="job-finder-row-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function selectJobFromFinder(jobNumber) {
+    // Track as recent
+    trackRecentJob(jobNumber);
+    
+    // Close modal
+    closeJobFinder();
+    
+    // Open job bag
+    openJobDetail(jobNumber);
+}
+
+// Recent jobs tracking (localStorage)
+function getRecentJobs() {
+    try {
+        const stored = localStorage.getItem(RECENT_JOBS_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+}
+
+function trackRecentJob(jobNumber) {
+    try {
+        let recent = getRecentJobs();
+        // Remove if already exists
+        recent = recent.filter(j => j !== jobNumber);
+        // Add to front
+        recent.unshift(jobNumber);
+        // Limit size
+        recent = recent.slice(0, MAX_RECENT_JOBS);
+        localStorage.setItem(RECENT_JOBS_KEY, JSON.stringify(recent));
+    } catch {
+        // Ignore localStorage errors
+    }
+}
+
+// Make functions globally available
+window.openJobFinder = openJobFinder;
+window.closeJobFinder = closeJobFinder;
+window.debouncedFilterJobFinder = debouncedFilterJobFinder;
+window.selectJobFromFinder = selectJobFromFinder;
+
+// Close on overlay click
+document.addEventListener('click', (e) => {
+    if (e.target.id === 'job-finder-modal') {
+        closeJobFinder();
+    }
+});
 
 // ===== STORY EDITOR =====
 
@@ -1684,7 +1980,7 @@ function renderJobBagFiles(job) {
 
 async function loadJobBagUpdates(jobNumber) {
     const threadBody = $('jb-thread-body');
-    threadBody.innerHTML = '<div class="jb-thread-loading">Loading updates...</div>';
+    threadBody.innerHTML = loadingDots();
 
     try {
         const response = await fetch(`${API_BASE}/job/${encodeURIComponent(jobNumber)}/updates`);
@@ -1797,7 +2093,7 @@ function escapeHtml(str) {
 
 async function loadJobBagBudget(jobNumber) {
     const budgetBody = $('jb-budget-body');
-    budgetBody.innerHTML = '<div class="jb-thread-loading">Loading...</div>';
+    budgetBody.innerHTML = loadingDots('small');
 
     try {
         const response = await fetch(`${API_BASE}/job/${encodeURIComponent(jobNumber)}/budget`);
@@ -1920,6 +2216,11 @@ function setAttachedFile(file) {
     $('jb-attach-name').textContent = file.name;
     $('jb-attach-preview').style.display = 'block';
     $('jb-attach-btn').classList.add('active');
+    // Update label with job number
+    const label = $('jb-subfolder-label');
+    if (label && currentBagJob) {
+        label.textContent = `SAVE IN ${currentBagJob.jobNumber}`;
+    }
 }
 
 function clearAttachedFile() {
@@ -1974,14 +2275,21 @@ function editEntry(entryId) {
     const input = $('update-edit-input');
     if (!modal || !input) return;
     input.value = entry.update || '';
-    // Pre-fill date if backdated
+    
+    // Pre-fill date with effective date (backdate or created_time)
     const dateInput = $('update-edit-date');
-    if (dateInput) dateInput.value = entry.backdate || '';
-    // Reset confirm state
-    const footer = $('update-edit-footer');
-    const confirm = $('update-delete-confirm');
-    if (footer) footer.style.display = 'flex';
-    if (confirm) confirm.style.display = 'none';
+    if (dateInput) {
+        let effectiveDate = entry.backdate || '';
+        if (!effectiveDate && entry.created_time) {
+            // Extract YYYY-MM-DD from created_time
+            effectiveDate = entry.created_time.split('T')[0];
+        }
+        dateInput.value = effectiveDate;
+    }
+    
+    // Reset delete confirm state
+    resetDeleteConfirmState();
+    
     modal.classList.add('visible');
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
@@ -1990,16 +2298,36 @@ function editEntry(entryId) {
 function closeUpdateEditModal() {
     $('update-edit-modal')?.classList.remove('visible');
     currentEditEntry = null;
+    resetDeleteConfirmState();
+}
+
+function resetDeleteConfirmState() {
+    const icon = $('update-delete-icon');
+    const btn = $('update-delete-confirm-btn');
+    if (icon) icon.style.display = 'flex';
+    if (btn) {
+        btn.style.display = 'none';
+        btn.disabled = false;
+        btn.textContent = 'Delete?';
+    }
 }
 
 function confirmDeleteUpdate() {
-    $('update-edit-footer').style.display = 'none';
-    $('update-delete-confirm').style.display = 'flex';
+    const icon = $('update-delete-icon');
+    const btn = $('update-delete-confirm-btn');
+    if (icon) icon.style.display = 'none';
+    if (btn) btn.style.display = 'block';
 }
 
 function cancelDeleteUpdate() {
-    $('update-edit-footer').style.display = 'flex';
-    $('update-delete-confirm').style.display = 'none';
+    resetDeleteConfirmState();
+}
+
+function handleUpdateModalBackdrop(event) {
+    // Clicking the overlay background closes modal
+    if (event.target.id === 'update-edit-modal') {
+        closeUpdateEditModal();
+    }
 }
 
 async function saveUpdateEdit() {
@@ -2055,7 +2383,7 @@ async function executeDeleteUpdate() {
         showToast("Couldn't delete update.", 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Yes, delete';
+        btn.textContent = 'Delete?';
     }
 }
 
@@ -2063,8 +2391,10 @@ window.editEntry = editEntry;
 window.closeUpdateEditModal = closeUpdateEditModal;
 window.confirmDeleteUpdate = confirmDeleteUpdate;
 window.cancelDeleteUpdate = cancelDeleteUpdate;
+window.resetDeleteConfirmState = resetDeleteConfirmState;
 window.saveUpdateEdit = saveUpdateEdit;
 window.executeDeleteUpdate = executeDeleteUpdate;
+window.handleUpdateModalBackdrop = handleUpdateModalBackdrop;
 
 
 
@@ -2173,7 +2503,8 @@ async function saveJobUpdate() {
     
     // Validation: if posting an update, must set next update due date
     const originalDue = formatDateForInput(currentEditJob.updateDue);
-    if (message && message !== currentEditJob.update && (!updateDue || updateDue === originalDue)) {
+    const originalUpdate = currentEditJob.update || '';
+    if (message && message !== originalUpdate && (!updateDue || updateDue === originalDue)) {
         showToast("When's the update due?", 'error');
         $('job-edit-update-due').focus();
         return;
@@ -2187,7 +2518,7 @@ async function saveJobUpdate() {
     const payload = { status, withClient, author: authorName };
     if (updateDue) payload.updateDue = updateDue;
     if (liveDate) payload.liveDate = liveDate;
-    if (message && message !== currentEditJob.update) payload.message = message;
+    if (message && message !== originalUpdate) payload.message = message;
     if (description !== currentEditJob.description) payload.description = description;
     if (projectOwner !== currentEditJob.projectOwner) payload.projectOwner = projectOwner;
     
@@ -2202,7 +2533,7 @@ async function saveJobUpdate() {
         if (!response.ok) throw new Error('Update failed');
         
         // Also post to Teams if there's a new message
-        if (message && message !== currentEditJob.update) {
+        if (message && message !== originalUpdate) {
             fetch(`${PROXY_BASE}/proxy/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2225,6 +2556,18 @@ async function saveJobUpdate() {
             if (description) job.description = description;
             if (projectOwner) job.projectOwner = projectOwner;
         }
+
+        // Also update currentBagJob if we're editing the same job
+        if (currentBagJob?.jobNumber === jobNumber) {
+            currentBagJob.status = status;
+            currentBagJob.withClient = withClient;
+            currentBagJob.updateDue = updateDue;
+            currentBagJob.liveDate = liveDate;
+            if (message) currentBagJob.update = message;
+            if (description) currentBagJob.description = description;
+            if (projectOwner) currentBagJob.projectOwner = projectOwner;
+            refreshJobBagLeft();
+        }
         
         showToast('Job updated.', 'success');
         btn.textContent = 'UPDATE';
@@ -2232,7 +2575,7 @@ async function saveJobUpdate() {
         closeJobModal();
 
         // Refresh thread if we're in the Job Bag and a message was posted
-        if (message && message !== currentEditJob.update && currentBagJob?.jobNumber === jobNumber) {
+        if (message && message !== originalUpdate && currentBagJob?.jobNumber === jobNumber) {
             loadJobBagUpdates(jobNumber);
         }
 
@@ -2555,7 +2898,7 @@ function renderWip() {
     // Show loading modal if jobs haven't loaded yet
     if (!state.jobsLoaded) {
         content.innerHTML = '';
-        showLoadingModal('Grabbing all your jobs...');
+        showLoadingModal();
         return;
     }
     
@@ -2667,7 +3010,7 @@ function renderPhoneWip() {
     
     if (!state.jobsLoaded) {
         content.innerHTML = '';
-        showLoadingModal('Grabbing all your jobs...');
+        showLoadingModal();
         return;
     }
     
@@ -2800,10 +3143,11 @@ const currentCalendarQuarter = (() => {
     return 'Q4-cal';
 })();
 
-const clientQuarterLabels = {
-    'ONE': 'Q4', 'ONS': 'Q4', 'ONB': 'Q4',
-    'SKY': 'Q3', 'TOW': 'Q2', 'FIS': 'Q4'
-};
+// Helper to get currentQuarter from trackerClients (loaded from API)
+function getClientCurrentQuarter(clientCode) {
+    const client = trackerClients.find(c => c.code === clientCode);
+    return client?.currentQuarter || 'Q1';
+}
 
 const fallbackTrackerClients = [
     { code: 'ONS', name: 'One NZ - Simplification', committed: 25000, rollover: 0, rolloverUseIn: '', yearEnd: 'March', currentQuarter: 'Q4' },
@@ -2833,7 +3177,7 @@ function getQuarterInfoForMonth(clientCode, month) {
     const quarter = calendarQuarters[calQ];
     const calQNum = parseInt(calQ.replace('Q', '').replace('-cal', ''));
     const clientCurrentCalQ = parseInt(currentCalendarQuarter.replace('Q', '').replace('-cal', ''));
-    const clientCurrentLabel = parseInt(clientQuarterLabels[clientCode]?.replace('Q', '') || '1');
+    const clientCurrentLabel = parseInt(getClientCurrentQuarter(clientCode).replace('Q', '') || '1');
     let clientQNum = clientCurrentLabel + (calQNum - clientCurrentCalQ);
     if (clientQNum > 4) clientQNum -= 4;
     if (clientQNum < 1) clientQNum += 4;
@@ -2842,13 +3186,13 @@ function getQuarterInfoForMonth(clientCode, month) {
 
 function getCurrentQuarterInfo(clientCode) {
     const quarter = calendarQuarters[currentCalendarQuarter];
-    const clientLabel = clientQuarterLabels[clientCode] || 'Q1';
+    const clientLabel = getClientCurrentQuarter(clientCode);
     return { quarter: clientLabel, months: quarter.months, label: quarter.label };
 }
 
 function getPreviousQuarter(clientCode) {
     const quarter = calendarQuarters['Q4-cal'];
-    const clientCurrentQ = parseInt((clientQuarterLabels[clientCode] || 'Q1').replace('Q', ''));
+    const clientCurrentQ = parseInt(getClientCurrentQuarter(clientCode).replace('Q', ''));
     const prevQ = clientCurrentQ === 1 ? 'Q4' : 'Q' + (clientCurrentQ - 1);
     return { quarter: prevQ, months: quarter.months, label: quarter.label };
 }
@@ -2937,9 +3281,10 @@ function populateTrackerClients(data) {
     }
 }
 
-async function loadTrackerData(clientCode) {
+async function loadTrackerData(clientCode, cacheBust = false) {
     try {
-        const response = await fetch(`${API_BASE}/tracker/data?client=${clientCode}`);
+        const url = `${API_BASE}/tracker/data?client=${clientCode}${cacheBust ? '&_t=' + Date.now() : ''}`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error('API returned ' + response.status);
         const data = await response.json();
         trackerData = data.map(d => ({
@@ -3052,7 +3397,7 @@ async function renderTracker() {
     
     // Show loading modal and clear content
     content.innerHTML = '';
-    showLoadingModal('Digging for the numbers...');
+    showLoadingModal();
     
     if (Object.keys(trackerClients).length === 0) {
         await loadTrackerClients();
@@ -3192,10 +3537,9 @@ function renderTrackerContent() {
                         ` : displayMainProjects.map(p => {
                             const jobNum = p.jobNumber.split(' ')[1] || '';
                             const showToDateCol = !trackerIsQuarterView && jobNum !== '000' && jobNum !== '001' && (spendToDate[p.jobNumber] || 0) > 0;
-                            const chevronDisabled = p._isGrouped ? 'style="color:var(--grey-200);cursor:default;"' : '';
                             return `
-                                <tr>
-                                    <td class="chevron-cell"><button class="chevron-btn" ${chevronDisabled} onclick="${p._isGrouped ? '' : `openTrackerDetail('${p.jobNumber}', '${trackerCurrentMonth}')`}">${ICON_CHEVRON_RIGHT}</button></td>
+                                <tr class="tracker-row-clickable" onclick="openTrackerDetail('${p.jobNumber}', '${trackerCurrentMonth}')">
+                                    <td class="chevron-cell"><span class="chevron-indicator">${ICON_CHEVRON_RIGHT}</span></td>
                                     <td class="project-name">${p.jobNumber}  -  ${p.projectName}</td>
                                     <td>${p.owner || ''}</td>
                                     <td>${p.description || ''}</td>
@@ -3226,10 +3570,9 @@ function renderTrackerContent() {
                             ${displayOtherProjects.map(p => {
                                 const jobNum = p.jobNumber.split(' ')[1] || '';
                                 const showToDateCol = !trackerIsQuarterView && jobNum !== '000' && jobNum !== '001' && (spendToDate[p.jobNumber] || 0) > 0;
-                                const chevronDisabled = p._isGrouped ? 'style="color:var(--grey-200);cursor:default;"' : '';
                                 return `
-                                    <tr>
-                                        <td class="chevron-cell"><button class="chevron-btn" ${chevronDisabled} onclick="${p._isGrouped ? '' : `openTrackerDetail('${p.jobNumber}', '${trackerCurrentMonth}')`}">${ICON_CHEVRON_RIGHT}</button></td>
+                                    <tr class="tracker-row-clickable" onclick="openTrackerDetail('${p.jobNumber}', '${trackerCurrentMonth}')">
+                                        <td class="chevron-cell"><span class="chevron-indicator">${ICON_CHEVRON_RIGHT}</span></td>
                                         <td class="project-name">${p.jobNumber}  -  ${p.projectName}</td>
                                         <td>${p.owner || ''}</td>
                                         <td>${p.description || ''}</td>
@@ -3409,58 +3752,134 @@ function renderTrackerChart() {
 
 function setupTrackerModalListeners() {
     const modal = $('tracker-edit-modal');
-    const ballparkToggle = $('tracker-edit-ballpark');
+    if (!modal || modal.dataset.listenersAttached) return;
+    modal.dataset.listenersAttached = 'true';
     
-    if (modal) {
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeTrackerModal(); });
+    // Backdrop click to close (only the overlay itself, not children)
+    modal.addEventListener('click', (e) => { 
+        if (e.target === modal) closeTrackerModal(); 
+    });
+    
+    // Event delegation for stage pills
+    const stagePills = $('tracker-stage-pills');
+    if (stagePills) {
+        stagePills.addEventListener('click', (e) => {
+            const pill = e.target.closest('.tracker-stage-pill');
+            if (pill) {
+                e.stopPropagation();
+                stagePills.querySelectorAll('.tracker-stage-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+            }
+        });
     }
     
-    if (ballparkToggle) {
-        ballparkToggle.addEventListener('change', function() {
-            updateTrackerBallparkUI(this.checked);
+    // Event delegation for type pills
+    const typePills = $('tracker-type-pills');
+    if (typePills) {
+        typePills.addEventListener('click', (e) => {
+            const pill = e.target.closest('.tracker-type-pill');
+            if (pill) {
+                e.stopPropagation();
+                typePills.querySelectorAll('.tracker-type-pill').forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+            }
         });
     }
 }
 
-function updateTrackerBallparkUI(isBallpark) {
-    const modal = document.querySelector('.tracker-modal');
-    const label = $('tracker-ballpark-label');
-    if (isBallpark) {
-        modal?.classList.add('ballpark-active');
-        label?.classList.add('active');
-    } else {
-        modal?.classList.remove('ballpark-active');
-        label?.classList.remove('active');
-    }
+function setTrackerStagePill(stage) {
+    document.querySelectorAll('.tracker-stage-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.value === stage);
+    });
 }
 
-function openTrackerEditModal(jobNumber, month) {
-    const project = trackerData.find(p => p.jobNumber === jobNumber && p.month === month) ||
-                    trackerData.find(p => p.jobNumber === jobNumber);
+function setTrackerTypePill(type) {
+    document.querySelectorAll('.tracker-type-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.value === type);
+    });
+}
 
-    if (!project) {
-        showToast('No tracker entry found for this job.', 'error');
+function getTrackerStagePill() {
+    const active = document.querySelector('.tracker-stage-pill.active');
+    return active?.dataset.value || 'Simplify';
+}
+
+function getTrackerTypePill() {
+    const active = document.querySelector('.tracker-type-pill.active');
+    return active?.dataset.value || 'Project budget';
+}
+
+async function openTrackerEditModal(jobNumber, month) {
+    // Get job info from Projects (always exists)
+    const job = state.allJobs?.find(j => j.jobNumber === jobNumber);
+    if (!job) {
+        showToast('Job not found.', 'error');
         return;
     }
-
-    trackerCurrentEditData = project;
-
-    $('tracker-modal-title').textContent = 'Update ' + jobNumber;
-    $('tracker-edit-name').value = project.projectName;
-    $('tracker-edit-description').value = project.description || '';
-    $('tracker-edit-spend').value = project.spend;
-    $('tracker-edit-month').value = project.month;
-    $('tracker-edit-spendtype').value = project.spendType;
-
-    // Stage — read from allJobs state
-    const job = state.allJobs?.find(j => j.jobNumber === jobNumber);
-    const stageEl = $('tracker-edit-stage');
-    if (stageEl) stageEl.value = job?.stage || 'Triage';
-
-    const isBallpark = project.ballpark || false;
-    $('tracker-edit-ballpark').checked = isBallpark;
-    updateTrackerBallparkUI(isBallpark);
-
+    
+    // Try to find existing tracker entry
+    const trackerEntry = trackerData.find(p => p.jobNumber === jobNumber && p.month === month) ||
+                         trackerData.find(p => p.jobNumber === jobNumber);
+    
+    // Fetch total spend for this job
+    let totalSpend = 0;
+    try {
+        const budgetRes = await fetch(`${API_BASE}/job/${jobNumber}/budget`);
+        if (budgetRes.ok) {
+            const budgetData = await budgetRes.json();
+            totalSpend = budgetData.total || 0;
+        }
+    } catch (e) {
+        console.log('Could not fetch budget:', e);
+    }
+    
+    const isCreateMode = !trackerEntry;
+    
+    // Set logo based on client code
+    const logoEl = $('tracker-job-logo');
+    if (logoEl) {
+        logoEl.src = getLogoUrl(job.clientCode);
+        logoEl.onerror = () => { logoEl.src = 'images/logos/Unknown.png'; };
+    }
+    
+    if (isCreateMode) {
+        // CREATE mode
+        trackerCurrentEditData = {
+            mode: 'create',
+            jobNumber: job.jobNumber
+        };
+        
+        $('tracker-edit-name').textContent = `${jobNumber} | ${job.jobName}`;
+        $('tracker-edit-total').textContent = `$${totalSpend.toLocaleString()}`;
+        
+        $('tracker-edit-spend').value = '';
+        $('tracker-edit-month').value = new Date().toLocaleString('en-US', { month: 'long' });
+        $('tracker-edit-description').value = '';
+        $('tracker-edit-ballpark').checked = true;
+        
+        setTrackerStagePill(job.stage || 'Simplify');
+        setTrackerTypePill('Project budget');
+        
+        $('tracker-save-btn').textContent = 'Create Entry';
+        
+    } else {
+        // UPDATE mode
+        trackerCurrentEditData = { ...trackerEntry, mode: 'update' };
+        
+        $('tracker-edit-name').textContent = `${jobNumber} | ${trackerEntry.projectName}`;
+        $('tracker-edit-total').textContent = `$${totalSpend.toLocaleString()}`;
+        
+        $('tracker-edit-spend').value = trackerEntry.spend;
+        $('tracker-edit-month').value = trackerEntry.month;
+        $('tracker-edit-description').value = trackerEntry.description || '';
+        $('tracker-edit-ballpark').checked = trackerEntry.ballpark || false;
+        
+        setTrackerStagePill(job.stage || 'Simplify');
+        setTrackerTypePill(trackerEntry.spendType || 'Project budget');
+        
+        $('tracker-save-btn').textContent = 'Save Changes';
+    }
+    
     $('tracker-edit-modal')?.classList.add('visible');
 }
 
@@ -3469,13 +3888,12 @@ function openTrackerDetail(jobNumber, month) {
     if (state.currentUser?.accessLevel === 'Full') {
         openTrackerEditModal(jobNumber, month);
     } else {
-        openJobSummary(jobNumber);
+        openJobBag(jobNumber);
     }
 }
 
 function closeTrackerModal() {
     $('tracker-edit-modal')?.classList.remove('visible');
-    document.querySelector('.tracker-modal')?.classList.remove('ballpark-active');
     const saveBtn = $('tracker-save-btn');
     if (saveBtn) { saveBtn.textContent = 'Save Changes'; saveBtn.disabled = false; }
     trackerCurrentEditData = null;
@@ -3484,40 +3902,59 @@ function closeTrackerModal() {
 async function saveTrackerProject() {
     if (!trackerCurrentEditData) return;
     
-    const updates = {
-        id: trackerCurrentEditData.id,
+    const isCreateMode = trackerCurrentEditData.mode === 'create';
+    const savedJobNumber = trackerCurrentEditData.jobNumber; // Store before close
+    
+    const payload = {
         jobNumber: trackerCurrentEditData.jobNumber,
         description: $('tracker-edit-description').value,
         spend: parseFloat($('tracker-edit-spend').value) || 0,
         month: $('tracker-edit-month').value,
-        spendType: $('tracker-edit-spendtype').value,
+        spendType: getTrackerTypePill(),
         ballpark: $('tracker-edit-ballpark').checked,
-        stage: $('tracker-edit-stage')?.value || 'Triage'
+        stage: getTrackerStagePill()
     };
     
+    if (!isCreateMode) {
+        payload.id = trackerCurrentEditData.id;
+    }
+    
     const saveBtn = $('tracker-save-btn');
-    if (saveBtn) { saveBtn.textContent = 'Saving...'; saveBtn.disabled = true; }
+    if (saveBtn) { 
+        saveBtn.textContent = isCreateMode ? 'Creating...' : 'Saving...'; 
+        saveBtn.disabled = true; 
+    }
     
     try {
-        const response = await fetch(`${API_BASE}/tracker/update`, {
+        const endpoint = isCreateMode ? '/tracker/create' : '/tracker/update';
+        const response = await fetch(`${API_BASE}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
+            body: JSON.stringify(payload)
         });
         
         if (!response.ok) throw new Error('Failed to save');
         
-        Object.assign(trackerCurrentEditData, updates);
         closeTrackerModal();
         
-        await loadTrackerData(state.trackerClient);
+        // Force fresh data fetch with cache-busting
+        await loadTrackerData(state.trackerClient, true);
         renderTrackerContent();
-        showToast('On it.', 'success');
+
+        // Refresh Job Bag budget if we're viewing this job
+        if (currentBagJob?.jobNumber === savedJobNumber) {
+            loadJobBagBudget(currentBagJob.jobNumber);
+        }
+
+        showToast(isCreateMode ? 'Entry created.' : 'On it.', 'success');
         
     } catch (e) {
         console.error('Save failed:', e);
         showToast("Doh, that didn't work.", 'error');
-        if (saveBtn) { saveBtn.textContent = 'Save Changes'; saveBtn.disabled = false; }
+        if (saveBtn) { 
+            saveBtn.textContent = isCreateMode ? 'Create Entry' : 'Save Changes'; 
+            saveBtn.disabled = false; 
+        }
     }
 }
 
@@ -3653,7 +4090,7 @@ async function openNewJobModal() {
     
     // Reset dropdowns
     $('new-job-client-trigger').querySelector('span').textContent = 'Select client...';
-    $('new-job-client-menu').innerHTML = '<div class="custom-dropdown-option" style="color: var(--grey-400)">Loading...</div>';
+    $('new-job-client-menu').innerHTML = loadingDots('small');
     $('new-job-owner-trigger').querySelector('span').textContent = 'Select client first...';
     $('new-job-owner-menu').innerHTML = '';
     setNewJobDropdown('status', 'Incoming', 'Incoming');
@@ -3695,14 +4132,14 @@ async function openNewJobModal() {
         
         // Add top clients
         topClients.forEach(c => {
-            html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectNewJobOption('client', '${c.code}', '${c.name.replace(/'/g, "\\'")}')">${c.name}</div>`;
+            html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectNewJobOption('client', '${c.code}', '${c.name.replace(/'/g, "\\'")}')"><img src="${getLogoUrl(c.code)}" alt="${c.code}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px; vertical-align: middle;" onerror="this.src='images/logos/Unknown.png'">${c.name}</div>`;
         });
         
         // Add other clients with header
         if (otherClients.length > 0) {
             html += '<div class="custom-dropdown-option section-header">Other</div>';
             otherClients.forEach(c => {
-                html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectNewJobOption('client', '${c.code}', '${c.name.replace(/'/g, "\\'")}')">${c.name}</div>`;
+                html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectNewJobOption('client', '${c.code}', '${c.name.replace(/'/g, "\\'")}')"><img src="${getLogoUrl(c.code)}" alt="${c.code}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px; vertical-align: middle;" onerror="this.src='images/logos/Unknown.png'">${c.name}</div>`;
             });
         }
         
@@ -3970,11 +4407,28 @@ document.addEventListener('click', (e) => {
 window.showComingSoonModal = showComingSoonModal;
 window.closeComingSoonModal = closeComingSoonModal;
 
-// ===== LOADING MODAL =====
-function showLoadingModal(message = 'Loading...') {
+// ===== LOADING STATES =====
+
+/**
+ * Returns HTML for inline loading dots
+ * @param {string} size - 'default' or 'small'
+ * @returns {string} HTML string
+ */
+function loadingDots(size = 'default') {
+    const sizeClass = size === 'small' ? ' loading-dots--small' : '';
+    return `<div class="loading-dots${sizeClass}">
+        <div class="loading-dots__dot"></div>
+        <div class="loading-dots__dot"></div>
+        <div class="loading-dots__dot"></div>
+    </div>`;
+}
+
+/**
+ * Shows the loading modal with Dot + heart animation
+ */
+function showLoadingModal() {
     let overlay = $('loading-modal');
     
-    // Create modal HTML if it doesn't exist
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'loading-modal';
@@ -3985,14 +4439,12 @@ function showLoadingModal(message = 'Loading...') {
                     <img src="images/Robot_01.svg" alt="Dot" class="dot-robot">
                     <img src="images/Heart_01.svg" alt="" class="dot-heart-svg">
                 </div>
-                <div class="loading-modal-text"></div>
+                <div class="loading-modal-text">Just a sec</div>
             </div>
         `;
         document.body.appendChild(overlay);
     }
     
-    // Set message and show
-    overlay.querySelector('.loading-modal-text').textContent = message;
     overlay.classList.add('visible');
 }
 
@@ -4188,8 +4640,8 @@ async function openWipEmailModal() {
     $('wip-email-client-trigger').querySelector('span').textContent = 'Select client...';
     $('wip-email-people-group').style.display = 'none';
     $('wip-email-people-list').innerHTML = '';
-    $('wip-email-note-group').style.display = 'none';
-    $('wip-email-note').value = '';
+    $('wip-email-intro-group').style.display = 'none';
+    $('wip-email-intro').value = "Here's what's new, what's due and what needs a nudge.";
     $('wip-email-footer').style.display = 'none';
     
     // Wait for clients to load if not already
@@ -4214,13 +4666,13 @@ async function openWipEmailModal() {
     
     let html = '';
     topClients.forEach(c => {
-        html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectWipEmailClient('${c.code}', '${c.name.replace(/'/g, "\\'")}')">${c.name}</div>`;
+        html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectWipEmailClient('${c.code}', '${c.name.replace(/'/g, "\\'")}')"><img src="${getLogoUrl(c.code)}" alt="${c.code}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px; vertical-align: middle;" onerror="this.src='images/logos/Unknown.png'">${c.name}</div>`;
     });
     
     if (otherClients.length > 0) {
         html += '<div class="custom-dropdown-option section-header">Other</div>';
         otherClients.forEach(c => {
-            html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectWipEmailClient('${c.code}', '${c.name.replace(/'/g, "\\'")}')">${c.name}</div>`;
+            html += `<div class="custom-dropdown-option" data-value="${c.code}" onclick="selectWipEmailClient('${c.code}', '${c.name.replace(/'/g, "\\'")}')"><img src="${getLogoUrl(c.code)}" alt="${c.code}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px; vertical-align: middle;" onerror="this.src='images/logos/Unknown.png'">${c.name}</div>`;
         });
     }
     
@@ -4245,7 +4697,8 @@ function toggleWipEmailDropdown() {
 
 async function selectWipEmailClient(code, name) {
     wipEmailState.clientCode = code;
-    wipEmailState.recipients = [];
+    // Pre-add Michael as default recipient
+    wipEmailState.recipients = [{ email: 'michael@hunch.co.nz', firstName: 'Michael', accessLevel: 'Full' }];
     
     // Update UI
     $('wip-email-client-trigger').querySelector('span').textContent = name;
@@ -4258,8 +4711,8 @@ async function selectWipEmailClient(code, name) {
     logo.onerror = function() { this.src = 'images/logos/Unknown.png'; };
     
     // Fetch people for this client
-    $('wip-email-people-list').innerHTML = '<div style="color: #999; font-size: 14px;">Loading contacts...</div>';
-    $('wip-email-people-group').style.display = 'block';
+    $('wip-email-people-list').innerHTML = loadingDots('small');
+    $('wip-email-people-group').style.display = 'flex';
     
     try {
         const response = await fetch(`${API_BASE}/people/${code}`);
@@ -4268,14 +4721,15 @@ async function selectWipEmailClient(code, name) {
         // Filter to people with email addresses
         const withEmail = people.filter(p => p.email);
         
-        if (withEmail.length === 0) {
-            $('wip-email-people-list').innerHTML = '<div style="color: #999; font-size: 14px;">No contacts with email addresses</div>';
-            $('wip-email-note-group').style.display = 'none';
-            $('wip-email-footer').style.display = 'none';
-            return;
-        }
+        // Build people list - Michael first (pre-checked), then client contacts
+        let peopleHtml = `<label style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; cursor: pointer;">
+            <input type="checkbox" checked style="margin-right: 12px; width: 18px; height: 18px; accent-color: #ED1C24;" onchange="toggleWipEmailRecipient('michael@hunch.co.nz', 'Michael', 'Full')">
+            <div>
+                <div style="font-size: 15px; font-weight: 500; color: #333;">Michael</div>
+                <div style="font-size: 13px; color: #999;">michael@hunch.co.nz</div>
+            </div>
+        </label>`;
         
-        let peopleHtml = '';
         withEmail.forEach(p => {
             const escapedEmail = p.email.replace(/'/g, "\\'");
             const escapedName = (p.firstName || p.name).replace(/'/g, "\\'");
@@ -4290,9 +4744,9 @@ async function selectWipEmailClient(code, name) {
         });
         
         $('wip-email-people-list').innerHTML = peopleHtml;
-        $('wip-email-note-group').style.display = 'block';
-        $('wip-email-note').value = "Here's what's new, what's due and what's cooking.";
-        $('wip-email-footer').style.display = 'none';
+        // Show intro field and send button since Michael is pre-checked
+        $('wip-email-intro-group').style.display = 'flex';
+        $('wip-email-footer').style.display = 'flex';
         
     } catch (e) {
         console.error('Failed to load people:', e);
@@ -4320,10 +4774,13 @@ async function sendWipEmail() {
     sendBtn.disabled = true;
     sendBtn.textContent = 'SENDING...';
     
+    const intro = $('wip-email-intro')?.value?.trim() || null;
+    
     const payload = {
         clientCode: wipEmailState.clientCode,
         recipients: wipEmailState.recipients,
-        customNote: $('wip-email-note').value.trim() || null
+        intro: intro,
+        senderEmail: state.currentUser?.email
     };
     
     try {

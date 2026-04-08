@@ -1455,5 +1455,418 @@ def generate_html():
     return Response(html, mimetype='text/html')
 
 
+# ===== WIP PDF FUNCTIONS =====
+
+def get_wip_jobs(client_code):
+    """Fetch active jobs from Hub API"""
+    try:
+        response = requests.get(f"{API_BASE}/jobs/all", params={
+            'client': client_code,
+            'status': 'active'
+        })
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        print(f"Error fetching WIP jobs: {e}")
+    return []
+
+
+def group_wip_jobs(jobs):
+    """Group jobs into WIP sections"""
+    groups = {
+        'withUs': [],
+        'withClient': [],
+        'incoming': [],
+        'onHold': []
+    }
+    
+    for job in jobs:
+        status = job.get('status', '')
+        with_client = job.get('withClient', False)
+        
+        # Skip 000 and 999 jobs
+        job_num = job.get('jobNumber', '')
+        if ' 000' in job_num or ' 999' in job_num:
+            continue
+        
+        if status == 'Incoming':
+            groups['incoming'].append(job)
+        elif status == 'On Hold':
+            groups['onHold'].append(job)
+        elif with_client:
+            groups['withClient'].append(job)
+        else:
+            groups['withUs'].append(job)
+    
+    # Sort each group by updateDue
+    for key in groups:
+        groups[key].sort(key=lambda j: j.get('updateDue', '') or '9999-99-99')
+    
+    return groups
+
+
+def format_wip_date(date_str):
+    """Format date for WIP display (e.g., '2026-01-15' -> '15 Jan')"""
+    if not date_str:
+        return '-'
+    try:
+        dt = datetime.strptime(date_str, '%Y-%m-%d')
+        return dt.strftime('%-d %b')
+    except:
+        return date_str
+
+
+def truncate_text(text, max_len=60):
+    """Truncate text with ellipsis"""
+    if not text:
+        return '-'
+    if len(text) <= max_len:
+        return text
+    return text[:max_len-3] + '...'
+
+
+def build_wip_section_rows(jobs, max_rows=None):
+    """Build table rows for a WIP section"""
+    if not jobs:
+        return '<tr><td colspan="4" style="color: #999; font-style: italic; padding: 12px 0;">No jobs</td></tr>'
+    
+    rows = []
+    job_list = jobs[:max_rows] if max_rows else jobs
+    
+    for job in job_list:
+        job_number = job.get('jobNumber', '')
+        job_name = job.get('jobName', '')
+        update = truncate_text(job.get('update', ''), 50)
+        due = format_wip_date(job.get('updateDue', ''))
+        
+        rows.append(f'''
+            <tr>
+                <td class="job-id">{job_number}</td>
+                <td class="job-name">{job_name}</td>
+                <td class="job-update">{update}</td>
+                <td class="job-due">{due}</td>
+            </tr>
+        ''')
+    
+    if max_rows and len(jobs) > max_rows:
+        remaining = len(jobs) - max_rows
+        rows.append(f'<tr><td colspan="4" class="more-jobs">+ {remaining} more</td></tr>')
+    
+    return '\n'.join(rows)
+
+
+def build_wip_html(client, jobs):
+    """Build HTML for WIP PDF"""
+    groups = group_wip_jobs(jobs)
+    report_date = datetime.now().strftime('%-d %B %Y')
+    
+    # Count jobs per section
+    total_jobs = sum(len(g) for g in groups.values())
+    
+    html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        {SHARED_CSS}
+        
+        /* WIP-specific styles */
+        .wip-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }}
+        
+        .wip-section {{
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 16px;
+        }}
+        
+        .wip-section-title {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #ED1C24;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #ED1C24;
+        }}
+        
+        .wip-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }}
+        
+        .wip-table th {{
+            text-align: left;
+            font-size: 8px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 6px 0;
+            border-bottom: 1px solid #e5e5e5;
+        }}
+        
+        .wip-table td {{
+            padding: 8px 0;
+            color: #666;
+            vertical-align: top;
+            border-bottom: 1px solid #f0f0f0;
+        }}
+        
+        .wip-table tr:last-child td {{
+            border-bottom: none;
+        }}
+        
+        .job-id {{
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+            width: 70px;
+        }}
+        
+        .job-name {{
+            font-weight: 500;
+            color: #333;
+            max-width: 120px;
+        }}
+        
+        .job-update {{
+            color: #666;
+            font-size: 8px;
+            max-width: 140px;
+        }}
+        
+        .job-due {{
+            text-align: right;
+            white-space: nowrap;
+            color: #999;
+            width: 50px;
+        }}
+        
+        .more-jobs {{
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding-top: 8px;
+        }}
+        
+        .wip-summary {{
+            display: flex;
+            gap: 24px;
+            margin-bottom: 20px;
+        }}
+        
+        .wip-stat {{
+            text-align: center;
+        }}
+        
+        .wip-stat-value {{
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 32px;
+            color: #333;
+        }}
+        
+        .wip-stat-label {{
+            font-size: 9px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="header-left">
+                <img src="{get_header_logo_src()}" alt="Hunch" class="header-logo">
+            </div>
+            <div class="header-right">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['code']}" class="client-logo">
+            </div>
+        </div>
+        
+        <div class="report-title-row">
+            <div class="client-name">{client['name'].upper()}</div>
+            <div class="report-meta-block">
+                <div class="report-meta">WIP REPORT</div>
+                <div class="report-date">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    {report_date}
+                </div>
+            </div>
+        </div>
+        
+        <div class="wip-summary">
+            <div class="wip-stat">
+                <div class="wip-stat-value">{total_jobs}</div>
+                <div class="wip-stat-label">Active Jobs</div>
+            </div>
+            <div class="wip-stat">
+                <div class="wip-stat-value">{len(groups['withUs'])}</div>
+                <div class="wip-stat-label">With Hunch</div>
+            </div>
+            <div class="wip-stat">
+                <div class="wip-stat-value">{len(groups['withClient'])}</div>
+                <div class="wip-stat-label">With Client</div>
+            </div>
+        </div>
+        
+        <div class="wip-grid">
+            <div class="wip-section">
+                <div class="wip-section-title">With Hunch</div>
+                <table class="wip-table">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Name</th>
+                            <th>Update</th>
+                            <th style="text-align: right;">Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {build_wip_section_rows(groups['withUs'], max_rows=8)}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="wip-section">
+                <div class="wip-section-title">With {client['name']}</div>
+                <table class="wip-table">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Name</th>
+                            <th>Update</th>
+                            <th style="text-align: right;">Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {build_wip_section_rows(groups['withClient'], max_rows=8)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="wip-grid">
+            <div class="wip-section">
+                <div class="wip-section-title">Incoming</div>
+                <table class="wip-table">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Name</th>
+                            <th>Update</th>
+                            <th style="text-align: right;">Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {build_wip_section_rows(groups['incoming'], max_rows=5)}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="wip-section">
+                <div class="wip-section-title">On Hold</div>
+                <table class="wip-table">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Name</th>
+                            <th>Update</th>
+                            <th style="text-align: right;">Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {build_wip_section_rows(groups['onHold'], max_rows=5)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <div class="footer-left">
+                <img src="{get_ai2_logo_src()}" alt="ai2" class="footer-logo">
+            </div>
+            <div class="footer-tagline">agency intuition x artificial intelligence</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
+        </footer>
+    </div>
+</body>
+</html>'''
+    
+    return html
+
+
+@app.route('/wip')
+def generate_wip_pdf():
+    """Generate WIP PDF for a client"""
+    client_code = request.args.get('client', 'TOW')
+    
+    # Get client data
+    client = get_client_data(client_code)
+    if not client:
+        return jsonify({'error': f'Client {client_code} not found'}), 404
+    
+    # Get active jobs
+    jobs = get_wip_jobs(client_code)
+    
+    # Build HTML
+    html = build_wip_html(client, jobs)
+    
+    # Convert to PDF
+    try:
+        pdf_bytes = html_to_pdf(html)
+    except Exception as e:
+        return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
+    
+    # Build filename
+    client_name = client['name'].replace('–', '-').replace('—', '-')
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    filename = f"Hunch WIP - {client_name} - {date_str}.pdf"
+    
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
+    )
+
+
+@app.route('/wip-html')
+def generate_wip_html():
+    """Generate WIP HTML (for testing)"""
+    client_code = request.args.get('client', 'TOW')
+    
+    client = get_client_data(client_code)
+    if not client:
+        return jsonify({'error': f'Client {client_code} not found'}), 404
+    
+    jobs = get_wip_jobs(client_code)
+    html = build_wip_html(client, jobs)
+    
+    return Response(html, mimetype='text/html')
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

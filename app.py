@@ -1560,8 +1560,30 @@ def build_wip_html(client, jobs):
     groups = group_wip_jobs(jobs)
     report_date = datetime.now().strftime('%-d %B %Y')
     
-    # Count jobs per section
-    total_jobs = sum(len(g) for g in groups.values())
+    # Empty state messages
+    empty_messages = {
+        'withUs': 'All jobs with you right now.',
+        'withClient': 'Nothing with you right now.',
+        'incoming': 'Nothing in the incoming list.',
+        'onHold': 'Nothing on hold.'
+    }
+    
+    def build_section_content(group_key, jobs_list, max_rows=10):
+        if not jobs_list:
+            return f'<div class="empty-message">{empty_messages[group_key]}</div>'
+        return f'''<table class="wip-table">
+                <thead>
+                    <tr>
+                        <th>Job</th>
+                        <th>Name</th>
+                        <th>Update</th>
+                        <th style="text-align: right;">Due</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {build_wip_section_rows(jobs_list, max_rows=max_rows)}
+                </tbody>
+            </table>'''
     
     html = f'''<!DOCTYPE html>
 <html>
@@ -1571,8 +1593,23 @@ def build_wip_html(client, jobs):
         {SHARED_CSS}
         
         /* WIP-specific styles - full width stacked */
+        .wip-header-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }}
+        
+        .wip-eyebrow {{
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+        }}
+        
         .wip-section {{
-            background: #fafafa;
+            border: 1px solid #e5e5e5;
             border-radius: 8px;
             padding: 14px 16px;
             margin-bottom: 12px;
@@ -1603,18 +1640,18 @@ def build_wip_html(client, jobs):
             text-align: left;
             font-size: 8px;
             font-weight: 600;
-            color: #999;
+            color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             padding: 5px 8px 5px 0;
-            border-bottom: 1px solid #e5e5e5;
+            border-bottom: 1px solid #ED1C24;
         }}
         
         .wip-table td {{
             padding: 6px 8px 6px 0;
-            color: #666;
+            color: #333;
             vertical-align: top;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #e5e5e5;
         }}
         
         .wip-table tr:last-child td {{
@@ -1635,14 +1672,14 @@ def build_wip_html(client, jobs):
         }}
         
         .job-update {{
-            color: #666;
+            color: #555;
             font-size: 8px;
         }}
         
         .job-due {{
             text-align: right;
             white-space: nowrap;
-            color: #999;
+            color: #666;
             width: 50px;
             padding-right: 0 !important;
         }}
@@ -1654,38 +1691,11 @@ def build_wip_html(client, jobs):
             padding-top: 6px;
         }}
         
-        .wip-summary {{
-            display: flex;
-            gap: 24px;
-            margin-bottom: 16px;
-        }}
-        
-        .wip-stat {{
-            text-align: center;
-        }}
-        
-        .wip-stat-value {{
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 28px;
-            color: #333;
-        }}
-        
-        .wip-stat-label {{
-            font-size: 9px;
-            font-weight: 600;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        
-        .wip-section.empty {{
-            padding: 10px 16px;
-        }}
-        
         .empty-message {{
             color: #999;
             font-style: italic;
-            font-size: 9px;
+            font-size: 10px;
+            padding: 4px 0;
         }}
     </style>
 </head>
@@ -1700,103 +1710,37 @@ def build_wip_html(client, jobs):
             </div>
         </div>
         
-        <div class="report-title-row">
-            <div class="client-name">{client['name'].upper()}</div>
-            <div class="report-meta-block">
-                <div class="report-meta">WIP REPORT</div>
-                <div class="report-date">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    {report_date}
-                </div>
-            </div>
-        </div>
-        
-        <div class="wip-summary">
-            <div class="wip-stat">
-                <div class="wip-stat-value">{total_jobs}</div>
-                <div class="wip-stat-label">Active Jobs</div>
-            </div>
-            <div class="wip-stat">
-                <div class="wip-stat-value">{len(groups['withUs'])}</div>
-                <div class="wip-stat-label">With Us</div>
-            </div>
-            <div class="wip-stat">
-                <div class="wip-stat-value">{len(groups['withClient'])}</div>
-                <div class="wip-stat-label">With You</div>
+        <div class="wip-header-row">
+            <div class="wip-eyebrow">Work in Progress</div>
+            <div class="report-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
             </div>
         </div>
         
         <div class="wip-section">
             <div class="wip-section-title">Jobs With Us</div>
-            <table class="wip-table">
-                <thead>
-                    <tr>
-                        <th>Job</th>
-                        <th>Name</th>
-                        <th>Update</th>
-                        <th style="text-align: right;">Due</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {build_wip_section_rows(groups['withUs'], max_rows=10)}
-                </tbody>
-            </table>
+            {build_section_content('withUs', groups['withUs'], max_rows=10)}
         </div>
         
         <div class="wip-section">
             <div class="wip-section-title">Jobs With You</div>
-            <table class="wip-table">
-                <thead>
-                    <tr>
-                        <th>Job</th>
-                        <th>Name</th>
-                        <th>Update</th>
-                        <th style="text-align: right;">Due</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {build_wip_section_rows(groups['withClient'], max_rows=10)}
-                </tbody>
-            </table>
+            {build_section_content('withClient', groups['withClient'], max_rows=10)}
         </div>
         
         <div class="wip-section">
             <div class="wip-section-title">Incoming Jobs</div>
-            <table class="wip-table">
-                <thead>
-                    <tr>
-                        <th>Job</th>
-                        <th>Name</th>
-                        <th>Update</th>
-                        <th style="text-align: right;">Due</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {build_wip_section_rows(groups['incoming'], max_rows=6)}
-                </tbody>
-            </table>
+            {build_section_content('incoming', groups['incoming'], max_rows=6)}
         </div>
         
         <div class="wip-section">
             <div class="wip-section-title">Jobs On Hold</div>
-            <table class="wip-table">
-                <thead>
-                    <tr>
-                        <th>Job</th>
-                        <th>Name</th>
-                        <th>Update</th>
-                        <th style="text-align: right;">Due</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {build_wip_section_rows(groups['onHold'], max_rows=6)}
-                </tbody>
-            </table>
+            {build_section_content('onHold', groups['onHold'], max_rows=6)}
         </div>
         
         <footer class="footer">

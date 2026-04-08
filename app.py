@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 
 # Import embedded images
-from image_data import HEADER_LOGO, AI2_LOGO, CLIENT_LOGOS
+from image_data import HEADER_LOGO, AI2_LOGO, CLIENT_LOGOS, WIP_HEADER
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -27,6 +27,10 @@ def get_client_logo_src(client_code):
     """Get base64 data URI for client logo"""
     logo = CLIENT_LOGOS.get(client_code, CLIENT_LOGOS.get('HUN'))
     return f"data:image/webp;base64,{logo}"
+
+def get_wip_header_src():
+    """Get base64 data URI for WIP header image (JPEG)"""
+    return f"data:image/jpeg;base64,{WIP_HEADER}"
 
 # Historical spend data for Jul-Sep (system only has data from Oct onwards)
 HISTORICAL_SPEND = {
@@ -1593,6 +1597,16 @@ def build_wip_html(client, jobs):
         {SHARED_CSS}
         
         /* WIP-specific styles - full width stacked */
+        .wip-header-image {{
+            margin-bottom: 16px;
+        }}
+        
+        .wip-header-image img {{
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+        }}
+        
         .wip-header-row {{
             display: flex;
             justify-content: space-between;
@@ -1613,6 +1627,7 @@ def build_wip_html(client, jobs):
             border-radius: 8px;
             padding: 14px 16px;
             margin-bottom: 12px;
+            background: #faf8f5;
         }}
         
         .wip-section:last-of-type {{
@@ -1701,13 +1716,8 @@ def build_wip_html(client, jobs):
 </head>
 <body>
     <div class="page">
-        <div class="header">
-            <div class="header-left">
-                <img src="{get_header_logo_src()}" alt="Hunch" class="header-logo">
-            </div>
-            <div class="header-right">
-                <img src="{get_client_logo_src(client['code'])}" alt="{client['code']}" class="client-logo">
-            </div>
+        <div class="wip-header-image">
+            <img src="{get_wip_header_src()}" alt="Hunch WIP">
         </div>
         
         <div class="wip-header-row">

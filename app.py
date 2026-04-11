@@ -29,7 +29,7 @@ def get_client_logo_src(client_code):
     return f"data:image/webp;base64,{logo}"
 
 def get_wip_header_src():
-    """Get base64 data URI for WIP header image (PNG)"""
+    """Get base64 data URI for WIP header image (JPEG)"""
     return f"data:image/png;base64,{WIP_HEADER}"
 
 # Historical spend data for Jul-Sep (system only has data from Oct onwards)

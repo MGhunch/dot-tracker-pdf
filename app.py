@@ -1597,14 +1597,22 @@ def build_wip_html(client, jobs):
         {SHARED_CSS}
         
         /* WIP-specific styles - full width stacked */
-        .wip-header-image {{
+        .wip-logo-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 16px;
         }}
         
         .wip-header-image img {{
             width: 100%;
-            max-width: 300px;
+            max-width: 150px;
             height: auto;
+        }}
+        
+        .wip-client-logo img {{
+            max-height: 50px;
+            width: auto;
         }}
         
         .wip-header-row {{
@@ -1716,8 +1724,13 @@ def build_wip_html(client, jobs):
 </head>
 <body>
     <div class="page">
-        <div class="wip-header-image">
-            <img src="{get_wip_header_src()}" alt="Hunch WIP">
+        <div class="wip-logo-row">
+            <div class="wip-header-image">
+                <img src="{get_wip_header_src()}" alt="Hunch WIP">
+            </div>
+            <div class="wip-client-logo">
+                <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}">
+            </div>
         </div>
         
         <div class="wip-header-row">

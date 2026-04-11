@@ -29,8 +29,8 @@ def get_client_logo_src(client_code):
     return f"data:image/webp;base64,{logo}"
 
 def get_wip_header_src():
-    """Get base64 data URI for WIP header image (JPEG)"""
-    return f"data:image/jpeg;base64,{WIP_HEADER}"
+    """Get base64 data URI for WIP header image (PNG)"""
+    return f"data:image/png;base64,{WIP_HEADER}"
 
 # Historical spend data for Jul-Sep (system only has data from Oct onwards)
 HISTORICAL_SPEND = {
@@ -1627,7 +1627,7 @@ def build_wip_html(client, jobs):
             border-radius: 8px;
             padding: 14px 16px;
             margin-bottom: 12px;
-            background: #faf8f5;
+            background: #fafafa;
         }}
         
         .wip-section:last-of-type {{

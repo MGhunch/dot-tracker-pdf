@@ -2828,6 +2828,14 @@ function toggleWipMode() {
     renderWip();
 }
 
+function openWipPdf() {
+    if (state.wipClient === 'all') {
+        showToast('Select a client first');
+        return;
+    }
+    window.open(`https://dot-tracker-pdf.up.railway.app/wip?client=${state.wipClient}`, '_blank');
+}
+
 function updateWipModeLabels() {
     $('mode-mobile')?.classList.toggle('active', state.wipMode === 'mobile');
     $('mode-desktop')?.classList.toggle('active', state.wipMode === 'desktop');
@@ -4840,5 +4848,6 @@ window.getTrackerPDF = getTrackerPDF;
 window.navigateTo = navigateTo;
 window.setWipMode = setWipMode;
 window.toggleWipMode = toggleWipMode;
+window.openWipPdf = openWipPdf;
 window.submitWipUpdate = submitWipUpdate;
 window.toggleWipWithClient = toggleWipWithClient;

@@ -4403,3 +4403,28 @@ input[type="date"].job-form-input::-webkit-calendar-picker-indicator {
 }
 
 /* Backdate pill — shown when a past date is selected */
+
+/* WIP PDF Button */
+.wip-pdf-btn {
+    background: #ED1C24;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.wip-pdf-btn:hover {
+    opacity: 0.9;
+}
+
+.wip-pdf-btn svg {
+    flex-shrink: 0;
+}

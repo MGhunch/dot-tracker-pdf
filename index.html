@@ -332,14 +332,10 @@
                             <div class="custom-dropdown-option selected" data-value="all">All Clients</div>
                         </div>
                     </div>
-                    <div class="mode-toggle">
-                        <span class="mode-label" id="mode-mobile" onclick="setWipMode('mobile')">Mobile</span>
-                        <label class="mode-switch">
-                            <input type="checkbox" id="wip-mode-switch" checked onchange="toggleWipMode()">
-                            <span class="mode-switch-slider"></span>
-                        </label>
-                        <span class="mode-label active" id="mode-desktop" onclick="setWipMode('desktop')">Desktop</span>
-                    </div>
+                    <button class="wip-pdf-btn" id="wip-pdf-btn" onclick="openWipPdf()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        PDF
+                    </button>
                 </div>
                 <div class="wip-content" id="wip-content">
                     <div class="loading">

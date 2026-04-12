@@ -1622,30 +1622,28 @@ def build_wip_html(client, jobs):
         .wip-header-row {{
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: baseline;
             margin-bottom: 20px;
         }}
         
         .wip-header-row .report-date {{
             white-space: nowrap;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 400;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             color: #999;
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            margin-top: 0;
         }}
         
         .wip-eyebrow {{
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 400;
             text-transform: uppercase;
             letter-spacing: 1.5px;
             color: #999;
-            line-height: 1;
         }}
         
         /* Override footer date for WIP - smaller */

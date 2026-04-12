@@ -1610,7 +1610,7 @@ def build_wip_html(client, jobs):
         }}
         
         .wip-header-image img {{
-            height: 40px;
+            height: 50px;
             width: auto;
         }}
         
@@ -1633,6 +1633,10 @@ def build_wip_html(client, jobs):
             text-transform: uppercase;
             letter-spacing: 1.5px;
             color: #999;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 0;
         }}
         
         .wip-eyebrow {{
@@ -1641,6 +1645,7 @@ def build_wip_html(client, jobs):
             text-transform: uppercase;
             letter-spacing: 1.5px;
             color: #999;
+            line-height: 1;
         }}
         
         /* Override footer date for WIP - smaller */

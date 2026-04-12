@@ -15,13 +15,18 @@ CORS(app)
 # Use dot-hub for data (single source of truth)
 API_BASE = 'https://dot.hunch.co.nz/api'
 
+# Pre-compute data URIs at module load time (not in functions)
+HEADER_LOGO_SRC = f"data:image/webp;base64,{HEADER_LOGO}"
+AI2_LOGO_SRC = f"data:image/webp;base64,{AI2_LOGO}"
+WIP_HEADER_SRC = f"data:image/webp;base64,{WIP_HEADER}"
+
 def get_header_logo_src():
     """Get base64 data URI for header logo"""
-    return f"data:image/webp;base64,{HEADER_LOGO}"
+    return HEADER_LOGO_SRC
 
 def get_ai2_logo_src():
     """Get base64 data URI for ai2 logo"""
-    return f"data:image/webp;base64,{AI2_LOGO}"
+    return AI2_LOGO_SRC
 
 def get_client_logo_src(client_code):
     """Get base64 data URI for client logo"""
@@ -29,8 +34,8 @@ def get_client_logo_src(client_code):
     return f"data:image/webp;base64,{logo}"
 
 def get_wip_header_src():
-    """Get base64 data URI for WIP header image (JPEG)"""
-    return f"data:image/png;base64,{WIP_HEADER}"
+    """Get base64 data URI for WIP header image (WEBP)"""
+    return WIP_HEADER_SRC
 
 # Historical spend data for Jul-Sep (system only has data from Oct onwards)
 HISTORICAL_SPEND = {
@@ -1605,9 +1610,8 @@ def build_wip_html(client, jobs):
         }}
         
         .wip-header-image img {{
-            width: 100%;
-            max-width: 150px;
-            height: auto;
+            height: 40px;
+            width: auto;
         }}
         
         .wip-client-logo img {{
@@ -1624,6 +1628,11 @@ def build_wip_html(client, jobs):
         
         .wip-header-row .report-date {{
             white-space: nowrap;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
         }}
         
         .wip-eyebrow {{
@@ -1632,6 +1641,11 @@ def build_wip_html(client, jobs):
             text-transform: uppercase;
             letter-spacing: 1.5px;
             color: #999;
+        }}
+        
+        /* Override footer date for WIP - smaller */
+        .footer .footer-date {{
+            font-size: 9px;
         }}
         
         .wip-section {{
@@ -1730,7 +1744,7 @@ def build_wip_html(client, jobs):
     <div class="page">
         <div class="wip-logo-row">
             <div class="wip-header-image">
-                <img src="{get_wip_header_src()}" alt="Hunch WIP" width="150" height="65">
+                <img src="{get_wip_header_src()}" alt="Hunch WIP">
             </div>
             <div class="wip-client-logo">
                 <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}">

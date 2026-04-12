@@ -1615,8 +1615,9 @@ def build_wip_html(client, jobs):
         }}
         
         .wip-client-logo img {{
-            max-height: 50px;
+            height: 50px;
             width: auto;
+            object-fit: contain;
         }}
         
         .wip-header-row {{
@@ -1626,8 +1627,15 @@ def build_wip_html(client, jobs):
             margin-bottom: 20px;
         }}
         
-        .wip-header-row .report-date {{
-            white-space: nowrap;
+        .wip-eyebrow {{
+            font-size: 11px;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+        }}
+        
+        .wip-date {{
             font-size: 11px;
             font-weight: 400;
             text-transform: uppercase;
@@ -1635,21 +1643,11 @@ def build_wip_html(client, jobs):
             color: #999;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }}
         
-        .wip-header-row .report-date svg {{
-            vertical-align: middle;
-            margin-top: -1px;
-        }}
-        
-        .wip-eyebrow {{
-            font-size: 11px;
-            font-weight: 400;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #999;
-            line-height: 12px;
+        .wip-date svg {{
+            flex-shrink: 0;
         }}
         
         /* Override footer date for WIP - smaller */
@@ -1762,8 +1760,8 @@ def build_wip_html(client, jobs):
         
         <div class="wip-header-row">
             <div class="wip-eyebrow">Work in Progress</div>
-            <div class="report-date">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+            <div class="wip-date">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>

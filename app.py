@@ -1421,7 +1421,7 @@ def generate_pdf():
         pdf_bytes,
         mimetype='application/pdf',
         headers={
-            'Content-Disposition': f'attachment; filename="{filename}"'
+            'Content-Disposition': f'inline; filename="{filename}"'
         }
     )
 
@@ -1540,7 +1540,7 @@ def build_wip_section_rows(jobs, max_rows=None):
     for job in job_list:
         job_number = job.get('jobNumber', '')
         job_name = job.get('jobName', '')
-        update = truncate_text(job.get('update', ''), 50)
+        update = job.get('update', '') or '-'
         due = format_wip_date(job.get('updateDue', ''))
         
         rows.append(f'''
@@ -1620,6 +1620,10 @@ def build_wip_html(client, jobs):
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+        }}
+        
+        .wip-header-row .report-date {{
+            white-space: nowrap;
         }}
         
         .wip-eyebrow {{
@@ -1726,7 +1730,7 @@ def build_wip_html(client, jobs):
     <div class="page">
         <div class="wip-logo-row">
             <div class="wip-header-image">
-                <img src="{get_wip_header_src()}" alt="Hunch WIP">
+                <img src="{get_wip_header_src()}" alt="Hunch WIP" width="150" height="65">
             </div>
             <div class="wip-client-logo">
                 <img src="{get_client_logo_src(client['code'])}" alt="{client['name']}">
@@ -1819,7 +1823,7 @@ def generate_wip_pdf():
         pdf_bytes,
         mimetype='application/pdf',
         headers={
-            'Content-Disposition': f'attachment; filename="{filename}"'
+            'Content-Disposition': f'inline; filename="{filename}"'
         }
     )
 

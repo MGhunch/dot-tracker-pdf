@@ -1644,6 +1644,8 @@ def build_wip_html(client, jobs):
             display: inline-flex;
             align-items: center;
             gap: 5px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }}
         
         .wip-date svg {{

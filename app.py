@@ -1518,7 +1518,7 @@ def group_wip_jobs(jobs):
 def format_wip_date(date_str):
     """Format date for WIP display (e.g., '2026-01-15' -> '15 Jan'). Past dates render as 'TBC' for client-facing PDF."""
     if not date_str:
-        return '-'
+        return 'TBC'
     try:
         dt = datetime.strptime(date_str, '%Y-%m-%d')
         if dt.date() < datetime.now().date():

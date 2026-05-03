@@ -1493,9 +1493,10 @@ def group_wip_jobs(jobs):
         status = job.get('status', '')
         with_client = job.get('withClient', False)
         
-        # Skip 000 and 999 jobs
+        # Skip finance jobs (still visible in Tracker)
         job_num = job.get('jobNumber', '')
-        if ' 000' in job_num or ' 999' in job_num:
+        num = job_num.split(' ')[1] if ' ' in job_num else ''
+        if num in ('000', '001', '998', '999'):
             continue
         
         if status == 'Incoming':
@@ -1515,11 +1516,13 @@ def group_wip_jobs(jobs):
 
 
 def format_wip_date(date_str):
-    """Format date for WIP display (e.g., '2026-01-15' -> '15 Jan')"""
+    """Format date for WIP display (e.g., '2026-01-15' -> '15 Jan'). Past dates render as 'TBC' for client-facing PDF."""
     if not date_str:
         return '-'
     try:
         dt = datetime.strptime(date_str, '%Y-%m-%d')
+        if dt.date() < datetime.now().date():
+            return 'TBC'
         return dt.strftime('%-d %b')
     except:
         return date_str

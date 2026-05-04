@@ -1,0 +1,100 @@
+/* =================================================================
+   WELCOME MODAL — Phase D
+   First content modal on modal-system.css.
+   Opens after magic-link verify (?welcome=1) over the destination
+   view. Sits while initial data loads. Button enables when data is
+   ready, user taps to enter.
+   ================================================================= */
+
+/* Shell sized larger than default (400px) — content modal needs room
+   for image + copy side-by-side. */
+.welcome-modal-shell {
+    max-width: 460px;
+    padding: 28px 32px;
+}
+
+/* Body composes its own layout — image left, content right. */
+.welcome-modal-body {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.welcome-modal-graphic {
+    flex: 0 0 auto;
+    width: 130px;
+}
+
+.welcome-modal-graphic img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.welcome-modal-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.welcome-modal-headline {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--modal-text-primary);
+    margin: 0 0 6px 0;
+    line-height: 1;
+}
+
+.welcome-modal-sub {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--modal-text-secondary);
+    margin: 0 0 18px 0;
+    line-height: 1.4;
+}
+
+/* Loading state — softer, warmer disabled fill than the system default.
+   Reads as "not yet" rather than "broken". */
+.welcome-modal-button[disabled] {
+    background: #E0DDD6;
+    border-color: #E0DDD6;
+    color: #B3AEA3;
+    cursor: wait;
+}
+
+/* When data lands, this class flips on and the button comes alive
+   with a subtle attention pulse. */
+.welcome-modal-button.is-ready {
+    animation: welcomeButtonReady 0.4s ease-out;
+}
+
+@keyframes welcomeButtonReady {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+
+/* ---------- Mobile (<480px) — stack image above content ---------- */
+
+@media (max-width: 480px) {
+    .welcome-modal-shell {
+        padding: 24px 20px;
+    }
+
+    .welcome-modal-body {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+    }
+
+    .welcome-modal-graphic {
+        width: 140px;
+    }
+
+    .welcome-modal-headline {
+        font-size: 28px;
+    }
+}

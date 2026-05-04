@@ -191,11 +191,22 @@ def get_client_data(client_code):
             for c in clients:
                 if c.get('code') == client_code:
                     current_q = c.get('currentQuarter', 'Q1')
+                    # Prefer rolloverObject from tracker.py (server-side calc).
+                    # Falls back to legacy 'rollover' Airtable formula only if
+                    # rolloverObject is absent entirely (i.e. tracker.py errored
+                    # on the Hub). If rolloverObject is present but lastQuarter
+                    # is None, that means rollover legitimately resolved to $0
+                    # and we should NOT fall back.
+                    if 'rolloverObject' in c:
+                        last_q = (c.get('rolloverObject') or {}).get('lastQuarter')
+                        rollover_credit = (last_q or {}).get('remaining', 0)
+                    else:
+                        rollover_credit = c.get('rollover', 0) or 0
                     return {
                         'name': c.get('name', client_code),
                         'code': client_code,
                         'monthlyCommitted': c.get('committed', 10000),
-                        'rolloverCredit': c.get('rollover', 0) or 0,
+                        'rolloverCredit': rollover_credit,
                         'rolloverQuarter': get_previous_quarter(current_q),  # Quarter it came FROM
                         'rolloverUseIn': c.get('rolloverUseIn', ''),  # Quarter label to USE it in
                         'currentQuarter': current_q,

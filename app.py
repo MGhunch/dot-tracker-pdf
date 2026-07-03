@@ -1965,6 +1965,30 @@ def build_all_wip_html(jobs):
     <style>
         {SHARED_CSS}
         
+        /* All-clients WIP uses real paged flow: margins on every page,
+           footer repeats in the bottom page margin via a running element */
+        @page allwip {{
+            size: A4;
+            margin: 16mm 15mm 30mm 15mm;
+            @bottom-center {{ content: element(allwip-footer); }}
+        }}
+        
+        .allwip {{
+            page: allwip;
+        }}
+        
+        .allwip-footer {{
+            position: running(allwip-footer);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 2px solid #ED1C24;
+            width: 100%;
+        }}
+        
+        .allwip-footer .footer-logo {{ height: 32px; width: auto; }}
+        
         .wip-logo-row {{
             display: flex;
             justify-content: space-between;
@@ -2092,24 +2116,24 @@ def build_all_wip_html(jobs):
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="wip-logo-row">
-            <div class="wip-header-image">
-                <img src="{get_wip_header_src()}" alt="Hunch WIP">
-            </div>
-        </div>
-        <div class="wip-header-row">
-            <div class="wip-eyebrow">Work in Progress &mdash; Whole of Hunch</div>
-            <div class="wip-date">{report_date}</div>
-        </div>
-        {''.join(blocks)}
-        <footer class="footer">
+    <div class="allwip">
+        <footer class="allwip-footer">
             <div class="footer-left">
                 <img src="{get_ai2_logo_src()}" alt="ai2" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition x artificial intelligence</div>
             <div class="footer-date">{report_date}</div>
         </footer>
+        <div class="wip-logo-row">
+            <div class="wip-header-image">
+                <img src="{get_wip_header_src()}" alt="Hunch WIP">
+            </div>
+        </div>
+        <div class="wip-header-row">
+            <div class="wip-eyebrow">All Clients</div>
+            <div class="wip-date">{report_date}</div>
+        </div>
+        {''.join(blocks)}
     </div>
 </body>
 </html>'''

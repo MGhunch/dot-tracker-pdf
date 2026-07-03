@@ -1861,10 +1861,291 @@ def build_wip_html(client, jobs):
     return html
 
 
+# ===== WHOLE-OF-HUNCH WIP =====
+
+# Display order for client blocks in the all-clients WIP
+ALL_WIP_CLIENT_ORDER = ['ONE', 'ONB', 'ONS', 'SKY', 'TOW', 'FIS']
+
+
+def get_all_wip_jobs():
+    """Fetch active jobs for every client from Hub API"""
+    try:
+        response = requests.get(f"{API_BASE}/jobs/all", params={'status': 'active'})
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        print(f"Error fetching all WIP jobs: {e}")
+    return []
+
+
+def get_all_client_names():
+    """Fetch code -> name map from Hub API"""
+    names = {}
+    try:
+        response = requests.get(f"{API_BASE}/tracker/clients")
+        if response.status_code == 200:
+            for c in response.json():
+                names[c.get('code', '')] = c.get('name', c.get('code', ''))
+    except Exception as e:
+        print(f"Error fetching client names: {e}")
+    return names
+
+
+def wip_status_label(job):
+    """Human status label for the all-clients WIP table"""
+    status = job.get('status', '')
+    if status == 'Incoming':
+        return 'Incoming'
+    if status == 'On Hold':
+        return 'On hold'
+    return 'With client' if job.get('withClient', False) else 'With us'
+
+
+def build_all_wip_rows(jobs):
+    """Rows for one client's block in the all-clients WIP"""
+    rows = []
+    for job in jobs:
+        gone_quiet = GONE_QUIET_FLAG_SVG if is_gone_quiet(job) else ''
+        rows.append(f'''
+            <tr>
+                <td class="job-id">{job.get('jobNumber', '')}</td>
+                <td class="job-name">{job.get('jobName', '')}</td>
+                <td class="job-status">{wip_status_label(job)}</td>
+                <td class="job-update">{job.get('update', '') or '-'}</td>
+                <td class="job-quiet">{gone_quiet}</td>
+            </tr>
+        ''')
+    return '\n'.join(rows)
+
+
+def build_all_wip_html(jobs):
+    """Build HTML for the whole-of-Hunch WIP - one block per client with logo"""
+    report_date = datetime.now().strftime('%-d %B %Y')
+    client_names = get_all_client_names()
+
+    # Group jobs by client, skipping finance/admin lines
+    status_rank = {'With client': 0, 'With us': 1, 'Incoming': 2, 'On hold': 3}
+    by_client = {}
+    for job in jobs:
+        job_num = job.get('jobNumber', '')
+        num = job_num.split(' ')[1] if ' ' in job_num else ''
+        if num in ('000', '001', '998', '999'):
+            continue
+        code = job.get('clientCode', '') or (job_num.split(' ')[0] if ' ' in job_num else '?')
+        by_client.setdefault(code, []).append(job)
+
+    # Sort jobs within each client: status group, then job number
+    for code in by_client:
+        by_client[code].sort(key=lambda j: (status_rank.get(wip_status_label(j), 9), j.get('jobNumber', '')))
+
+    # Client block order: known order first, then any others alphabetically
+    ordered = [c for c in ALL_WIP_CLIENT_ORDER if c in by_client]
+    ordered += sorted(c for c in by_client if c not in ALL_WIP_CLIENT_ORDER)
+
+    blocks = []
+    for code in ordered:
+        client_jobs = by_client[code]
+        display_name = client_names.get(code, code)
+        blocks.append(f'''
+        <div class="wip-client-block">
+            <div class="wip-client-head">
+                <img src="{get_client_logo_src(code)}" alt="{code}">
+                <span>{display_name}</span>
+            </div>
+            <table class="wip-table">
+                <thead>
+                    <tr>
+                        <th>Job</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Update</th>
+                        <th style="text-align: center;">Gone Quiet?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {build_all_wip_rows(client_jobs)}
+                </tbody>
+            </table>
+        </div>''')
+
+    html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        {SHARED_CSS}
+        
+        .wip-logo-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .wip-header-image img {{
+            height: 40px;
+        }}
+        
+        .wip-header-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin: 16px 0 20px 0;
+        }}
+        
+        .wip-eyebrow {{
+            font-size: 11px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }}
+        
+        .wip-date {{
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .wip-client-block {{
+            page-break-inside: avoid;
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+        }}
+        
+        .wip-client-head {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }}
+        
+        .wip-client-head img {{
+            height: 26px;
+            width: auto;
+        }}
+        
+        .wip-client-head span {{
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .wip-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }}
+        
+        .wip-table th {{
+            text-align: left;
+            font-size: 8px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 5px 8px 5px 0;
+            border-bottom: 1px solid #ED1C24;
+        }}
+        
+        .wip-table td {{
+            padding: 6px 8px 6px 0;
+            color: #333;
+            vertical-align: top;
+            border-bottom: 1px solid #e5e5e5;
+        }}
+        
+        .wip-table tr:last-child td {{
+            border-bottom: none;
+        }}
+        
+        .job-id {{
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+            width: 60px;
+        }}
+        
+        .job-name {{
+            font-weight: 500;
+            color: #333;
+            width: 150px;
+        }}
+        
+        .job-status {{
+            white-space: nowrap;
+            color: #666;
+            width: 65px;
+        }}
+        
+        .job-update {{
+            color: #555;
+            font-size: 8px;
+        }}
+        
+        .job-quiet {{
+            text-align: center;
+            white-space: nowrap;
+            width: 40px;
+            padding-right: 0 !important;
+        }}
+        
+        .job-quiet svg {{
+            display: inline-block;
+            vertical-align: middle;
+        }}
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="wip-logo-row">
+            <div class="wip-header-image">
+                <img src="{get_wip_header_src()}" alt="Hunch WIP">
+            </div>
+        </div>
+        <div class="wip-header-row">
+            <div class="wip-eyebrow">Work in Progress &mdash; Whole of Hunch</div>
+            <div class="wip-date">{report_date}</div>
+        </div>
+        {''.join(blocks)}
+        <footer class="footer">
+            <div class="footer-left">
+                <img src="{get_ai2_logo_src()}" alt="ai2" class="footer-logo">
+            </div>
+            <div class="footer-tagline">agency intuition x artificial intelligence</div>
+            <div class="footer-date">{report_date}</div>
+        </footer>
+    </div>
+</body>
+</html>'''
+    return html
+
+
 @app.route('/wip')
 def generate_wip_pdf():
-    """Generate WIP PDF for a client"""
+    """Generate WIP PDF for a client, or all clients with ?client=ALL"""
     client_code = request.args.get('client', 'TOW')
+    
+    # Whole-of-Hunch mode
+    if client_code.upper() == 'ALL':
+        jobs = get_all_wip_jobs()
+        html = build_all_wip_html(jobs)
+        try:
+            pdf_bytes = html_to_pdf(html)
+        except Exception as e:
+            return jsonify({'error': f'PDF generation failed: {str(e)}'}), 500
+        date_str = datetime.now().strftime('%Y-%m-%d')
+        filename = f"Hunch WIP - All Clients - {date_str}.pdf"
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'inline; filename="{filename}"'}
+        )
     
     # Get client data
     client = get_client_data(client_code)
@@ -1899,8 +2180,12 @@ def generate_wip_pdf():
 
 @app.route('/wip-html')
 def generate_wip_html():
-    """Generate WIP HTML (for testing)"""
+    """Generate WIP HTML (for testing). ?client=ALL for whole-of-Hunch."""
     client_code = request.args.get('client', 'TOW')
+    
+    if client_code.upper() == 'ALL':
+        jobs = get_all_wip_jobs()
+        return Response(build_all_wip_html(jobs), mimetype='text/html')
     
     client = get_client_data(client_code)
     if not client:

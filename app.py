@@ -1569,7 +1569,7 @@ def is_gone_quiet(job):
 def build_wip_section_rows(jobs, max_rows=None):
     """Build table rows for a WIP section"""
     if not jobs:
-        return '<tr><td colspan="5" style="color: #999; font-style: italic; padding: 12px 0;">No jobs</td></tr>'
+        return '<tr><td colspan="4" style="color: #999; font-style: italic; padding: 12px 0;">No jobs</td></tr>'
     
     rows = []
     job_list = jobs[:max_rows] if max_rows else jobs
@@ -1578,7 +1578,6 @@ def build_wip_section_rows(jobs, max_rows=None):
         job_number = job.get('jobNumber', '')
         job_name = job.get('jobName', '')
         update = job.get('update', '') or '-'
-        due = format_wip_date(job.get('updateDue', ''))
         gone_quiet = GONE_QUIET_FLAG_SVG if is_gone_quiet(job) else ''
         
         rows.append(f'''
@@ -1586,14 +1585,13 @@ def build_wip_section_rows(jobs, max_rows=None):
                 <td class="job-id">{job_number}</td>
                 <td class="job-name">{job_name}</td>
                 <td class="job-update">{update}</td>
-                <td class="job-due">{due}</td>
                 <td class="job-quiet">{gone_quiet}</td>
             </tr>
         ''')
     
     if max_rows and len(jobs) > max_rows:
         remaining = len(jobs) - max_rows
-        rows.append(f'<tr><td colspan="5" class="more-jobs">+ {remaining} more</td></tr>')
+        rows.append(f'<tr><td colspan="4" class="more-jobs">+ {remaining} more</td></tr>')
     
     return '\n'.join(rows)
 
@@ -1620,8 +1618,7 @@ def build_wip_html(client, jobs):
                         <th>Job</th>
                         <th>Name</th>
                         <th>Update</th>
-                        <th style="text-align: right;">Due</th>
-                        <th style="text-align: center;">Gone Quiet?</th>
+                        <th style="text-align: center;">Quiet?</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1759,13 +1756,6 @@ def build_wip_html(client, jobs):
         .job-update {{
             color: #555;
             font-size: 8px;
-        }}
-        
-        .job-due {{
-            text-align: right;
-            white-space: nowrap;
-            color: #666;
-            width: 50px;
         }}
         
         .job-quiet {{
@@ -1959,7 +1949,7 @@ def build_all_wip_html(jobs):
                         <th>Name</th>
                         <th>Status</th>
                         <th>Update</th>
-                        <th style="text-align: center;">Gone Quiet?</th>
+                        <th style="text-align: center;">Quiet?</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -1618,7 +1618,7 @@ def build_wip_html(client, jobs):
                         <th>Job</th>
                         <th>Name</th>
                         <th>Update</th>
-                        <th style="text-align: center;">Quiet?</th>
+                        <th style="text-align: center;">Follow up?</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1949,7 +1949,7 @@ def build_all_wip_html(jobs):
                         <th>Name</th>
                         <th>Status</th>
                         <th>Update</th>
-                        <th style="text-align: center;">Quiet?</th>
+                        <th style="text-align: center;">Follow up?</th>
                     </tr>
                 </thead>
                 <tbody>

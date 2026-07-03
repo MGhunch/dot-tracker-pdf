@@ -1984,7 +1984,7 @@ def build_all_wip_html(jobs):
             align-items: center;
             padding-top: 12px;
             border-top: 2px solid #ED1C24;
-            width: 100%;
+            width: 180mm;
         }}
         
         .allwip-footer .footer-logo {{ height: 32px; width: auto; }}

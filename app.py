@@ -1548,10 +1548,28 @@ def truncate_text(text, max_len=60):
     return text[:max_len-3] + '...'
 
 
+GONE_QUIET_FLAG_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ED1C24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="22" x2="5" y2="4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>'
+
+
+def is_gone_quiet(job):
+    """
+    A job has 'gone quiet' if it's Incoming or In Progress and Airtable's
+    pre-calculated Days Since Update formula has flagged it stale (the
+    formula appends a sleep emoji once a job passes its staleness threshold).
+    On Hold / Always on / Completed jobs are never flagged - going quiet
+    is expected for those.
+    """
+    status = job.get('status', '')
+    if status not in ('Incoming', 'In Progress'):
+        return False
+    days_since_update = job.get('daysSinceUpdate', '') or ''
+    return '\U0001F4A4' in days_since_update  # 💤
+
+
 def build_wip_section_rows(jobs, max_rows=None):
     """Build table rows for a WIP section"""
     if not jobs:
-        return '<tr><td colspan="4" style="color: #999; font-style: italic; padding: 12px 0;">No jobs</td></tr>'
+        return '<tr><td colspan="5" style="color: #999; font-style: italic; padding: 12px 0;">No jobs</td></tr>'
     
     rows = []
     job_list = jobs[:max_rows] if max_rows else jobs
@@ -1561,6 +1579,7 @@ def build_wip_section_rows(jobs, max_rows=None):
         job_name = job.get('jobName', '')
         update = job.get('update', '') or '-'
         due = format_wip_date(job.get('updateDue', ''))
+        gone_quiet = GONE_QUIET_FLAG_SVG if is_gone_quiet(job) else ''
         
         rows.append(f'''
             <tr>
@@ -1568,12 +1587,13 @@ def build_wip_section_rows(jobs, max_rows=None):
                 <td class="job-name">{job_name}</td>
                 <td class="job-update">{update}</td>
                 <td class="job-due">{due}</td>
+                <td class="job-quiet">{gone_quiet}</td>
             </tr>
         ''')
     
     if max_rows and len(jobs) > max_rows:
         remaining = len(jobs) - max_rows
-        rows.append(f'<tr><td colspan="4" class="more-jobs">+ {remaining} more</td></tr>')
+        rows.append(f'<tr><td colspan="5" class="more-jobs">+ {remaining} more</td></tr>')
     
     return '\n'.join(rows)
 
@@ -1601,6 +1621,7 @@ def build_wip_html(client, jobs):
                         <th>Name</th>
                         <th>Update</th>
                         <th style="text-align: right;">Due</th>
+                        <th style="text-align: center;">Gone Quiet?</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1745,7 +1766,18 @@ def build_wip_html(client, jobs):
             white-space: nowrap;
             color: #666;
             width: 50px;
+        }}
+        
+        .job-quiet {{
+            text-align: center;
+            white-space: nowrap;
+            width: 40px;
             padding-right: 0 !important;
+        }}
+        
+        .job-quiet svg {{
+            display: inline-block;
+            vertical-align: middle;
         }}
         
         .more-jobs {{

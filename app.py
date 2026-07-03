@@ -1965,12 +1965,11 @@ def build_all_wip_html(jobs):
     <style>
         {SHARED_CSS}
         
-        /* All-clients WIP uses real paged flow: margins on every page,
-           footer repeats in the bottom page margin via a running element */
+        /* All-clients WIP uses real paged flow: margins on every page.
+           position:fixed repeats the footer on every page in WeasyPrint. */
         @page allwip {{
             size: A4;
             margin: 16mm 15mm 30mm 15mm;
-            @bottom-center {{ content: element(allwip-footer); }}
         }}
         
         .allwip {{
@@ -1978,16 +1977,28 @@ def build_all_wip_html(jobs):
         }}
         
         .allwip-footer {{
-            position: running(allwip-footer);
+            position: fixed;
+            bottom: -22mm;
+            left: 0;
+            width: 180mm;
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding-top: 12px;
             border-top: 2px solid #ED1C24;
-            width: 180mm;
         }}
         
         .allwip-footer .footer-logo {{ height: 32px; width: auto; }}
+        
+        .allwip-footer .footer-date {{
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            color: #999;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }}
         
         .wip-logo-row {{
             display: flex;
@@ -2122,7 +2133,15 @@ def build_all_wip_html(jobs):
                 <img src="{get_ai2_logo_src()}" alt="ai2" class="footer-logo">
             </div>
             <div class="footer-tagline">agency intuition x artificial intelligence</div>
-            <div class="footer-date">{report_date}</div>
+            <div class="footer-date">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {report_date}
+            </div>
         </footer>
         <div class="wip-logo-row">
             <div class="wip-header-image">

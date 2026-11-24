@@ -200,13 +200,16 @@ def get_client_data(client_code):
                     if 'rolloverObject' in c:
                         last_q = (c.get('rolloverObject') or {}).get('lastQuarter')
                         rollover_credit = (last_q or {}).get('remaining', 0)
+                        rollover_inherited = (last_q or {}).get('inherited', 0)
                     else:
                         rollover_credit = c.get('rollover', 0) or 0
+                        rollover_inherited = rollover_credit
                     return {
                         'name': c.get('name', client_code),
                         'code': client_code,
                         'monthlyCommitted': c.get('committed', 10000),
                         'rolloverCredit': rollover_credit,
+                        'rolloverInherited': rollover_inherited,  # full carry from last quarter
                         'rolloverQuarter': get_previous_quarter(current_q),  # Quarter it came FROM
                         'rolloverUseIn': c.get('rolloverUseIn', ''),  # Quarter label to USE it in
                         'currentQuarter': current_q,
@@ -309,6 +312,25 @@ def build_project_row(project, truncate=False):
             <td class="{amount_class}">{display_amount}</td>
         </tr>
     '''
+
+
+def build_rollover_story(committed, inherited, to_date, prev_label):
+    """Rollover box narrative for the quarterly report (Nov 2026).
+    Placeholder wording — Michael to supply final copy for each state."""
+    over_committed = max(0, to_date - committed)
+    used = min(inherited, over_committed)
+    left = inherited - used
+    over_all = max(0, to_date - committed - inherited)
+    lead = f"*{format_currency(committed)} committed plus {format_currency(inherited)} carried over from {prev_label}."
+    if used == 0:
+        tail = "None of the rollover used yet."
+    elif left > 0:
+        tail = f"You've used {format_currency(used)} of the rollover, so {format_currency(left)} is left."
+    elif over_all > 0:
+        tail = f"All used, and {format_currency(over_all)} over."
+    else:
+        tail = "Now all used."
+    return f"{lead} {tail}"
 
 
 def round_to_hundred(amount):
@@ -438,13 +460,25 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
     
     if rollover_applies:
         rollover = client['rolloverCredit']
+        inherited = client.get('rolloverInherited', rollover) or 0
     else:
         rollover = 0
-    
-    # Available is just committed (rollover shown separately, not added)
-    available = committed
+        inherited = 0
+
+    # Quarterly report: last quarter's carry is added to Available (Nov 2026).
+    # Monthly report: committed only, no rollover.
+    has_carry = is_quarter and inherited > 0
+    available = committed + (inherited if has_carry else 0)
     remaining = available - grand_total
     spend_percent = min(100, round((grand_total / available) * 100)) if available > 0 else 0
+    committed_part = min(100, round((min(grand_total, committed) / available) * 100)) if available > 0 else 0
+    rollover_part = max(0, spend_percent - committed_part)
+
+    # Quarter that just closed under budget: say where the money went.
+    prev_range_of = {'JAN-MAR': 'OCT-DEC', 'APR-JUN': 'JAN-MAR', 'JUL-SEP': 'APR-JUN', 'OCT-DEC': 'JUL-SEP'}
+    carried_out = 0
+    if is_quarter and prev_range_of.get(rollover_use_in) == quarter_range_check:
+        carried_out = client.get('rolloverInherited', 0) or 0
     
     # Determine if overspent
     is_overspent = remaining < 0
@@ -467,12 +501,12 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
     rollover_box_html = ''
     rollover_note_html = ''
     rollover_line_html = ''
-    if rollover > 0:
-        # Subtle line under stats instead of 4th box
+    if has_carry:
+        story = build_rollover_story(committed, inherited, grand_total, rollover_quarter)
         rollover_line_html = f'''
             <div class="rollover-credit">
                 <div class="rollover-label">ROLLOVER</div>
-                <div class="rollover-amount">+{format_currency(rollover)} credit from {rollover_quarter}</div>
+                <div class="rollover-amount">{story}</div>
             </div>'''
         rollover_note_html = '<li><strong>Rollover</strong> – You can use your rollover credit any time during the quarter. It\'s extra on top of committed spend.</li>'
     
@@ -487,7 +521,13 @@ def build_html(client, tracker_data, month, is_quarter=False, all_quarter_data=N
             spend_percent, is_overspent, remaining_class, progress_class,
             rollover_line_html, rollover_note_html, grid_columns,
             quarter_label, quarter_range, report_date_short, today, display_quarter_label,
-            prev_chart_data
+            prev_chart_data,
+            card_info={
+                'has_carry': has_carry, 'available': available,
+                'carried_out': carried_out,
+                'carried_label': f"Carried into {client.get('currentQuarter', 'next quarter')}",
+                'committed_part': committed_part, 'rollover_part': rollover_part,
+            }
         )
     else:
         return build_monthly_html(
@@ -504,8 +544,34 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
                          spend_percent, is_overspent, remaining_class, progress_class,
                          rollover_line_html, rollover_note_html, grid_columns,
                          quarter_label, quarter_range, report_date, today, display_quarter_label,
-                         prev_chart_data):
+                         prev_chart_data, card_info=None):
     """Build HTML for quarterly report (2 pages: summary + detail)"""
+    ci = card_info or {}
+    if ci.get('has_carry'):
+        card1_html = f'''<div class="stat-box">
+                    <div class="stat-value grey">{format_currency(ci['available'])}*</div>
+                    <div class="stat-label">Available</div>
+                </div>'''
+    else:
+        card1_html = f'''<div class="stat-box">
+                    <div class="stat-value grey">{format_currency(committed)}</div>
+                    <div class="stat-label">Committed</div>
+                </div>'''
+    if ci.get('carried_out', 0) > 0:
+        card3_html = f'''<div class="stat-box">
+                    <div class="stat-value grey">{format_currency(ci['carried_out'])}</div>
+                    <div class="stat-label">{ci['carried_label']}</div>
+                </div>'''
+    else:
+        card3_html = f'''<div class="stat-box">
+                    <div class="stat-value {remaining_class}">{"+" if remaining < 0 else ""}{format_currency(abs(remaining))}</div>
+                    <div class="stat-label">{'Over' if remaining < 0 else 'To Spend'}</div>
+                </div>'''
+    if ci.get('has_carry') and not is_overspent:
+        bar_html = (f'<div class="progress-fill" style="width: {ci["committed_part"]}%; float: left; border-radius: 4px 0 0 4px;"></div>'
+                    f'<div class="progress-fill" style="width: {ci["rollover_part"]}%; float: left; opacity: 0.5; border-radius: 0 4px 4px 0;"></div>')
+    else:
+        bar_html = f'<div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>'
     
     # Build monthly summary for front page
     monthly_summary = build_monthly_summary(tracker_data, quarter_months)
@@ -794,21 +860,15 @@ def build_quarterly_html(client, tracker_data, projects, other_stuff, quarter_mo
         
         <div class="numbers-section">
             <div class="numbers-grid" style="grid-template-columns: {grid_columns};">
-                <div class="stat-box">
-                    <div class="stat-value grey">{format_currency(committed)}</div>
-                    <div class="stat-label">Committed</div>
-                </div>
+                {card1_html}
                 <div class="stat-box">
                     <div class="stat-value">{format_currency(grand_total)}</div>
                     <div class="stat-label">To Date</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value {remaining_class}">{"+" if remaining < 0 else ""}{format_currency(abs(remaining))}</div>
-                    <div class="stat-label">{'Over' if remaining < 0 else 'To Spend'}</div>
-                </div>
+                {card3_html}
             </div>
             <div class="progress-bar">
-                <div class="progress-fill {progress_class}" style="width: {spend_percent}%;"></div>
+                {bar_html}
             </div>{rollover_line_html}
         </div>
         
